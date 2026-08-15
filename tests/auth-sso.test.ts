@@ -16,7 +16,7 @@ testJwk.use = 'sig'
 testJwk.alg = 'RS256'
 
 const validJwks: JwkKey[] = [testJwk]
-const ISSUER = 'http://localhost:3000'
+const ISSUER = 'https://id.lubbalmandumah.com'
 const CLIENT_ID = 'lam_app_nexora'
 
 function createTestToken(overrides: Record<string, any> = {}, customSecretOrPem?: string, customHeader: Record<string, any> = {}) {
@@ -53,7 +53,7 @@ test('1. Direct unauthenticated nexora.lam.com redirects to LAM ID authorization
   assert.ok(state.length > 0, 'State generated')
   assert.ok(nonce.length > 0, 'Nonce generated')
 
-  const ssoUrl = new URL('http://localhost:3000/api/sso/authorize')
+  const ssoUrl = new URL('https://id.lubbalmandumah.com/api/sso/authorize')
   ssoUrl.searchParams.set('client_id', CLIENT_ID)
   ssoUrl.searchParams.set('redirect_uri', 'http://localhost:3001/api/auth/callback')
   ssoUrl.searchParams.set('response_type', 'code')
@@ -262,9 +262,9 @@ test('19. Production development bypass is impossible when ENABLE_DEV_AUTH is fa
 })
 
 test('20. Environment configuration defaults and OIDC parameters are validated', () => {
-  const defaultIssuer = process.env.LAM_OIDC_ISSUER || 'http://localhost:3000'
+  const defaultIssuer = process.env.LAM_OIDC_ISSUER || 'https://id.lubbalmandumah.com'
   const defaultCallback = process.env.NEXORA_CALLBACK_URL || 'http://localhost:3001/api/auth/callback'
 
-  assert.equal(defaultIssuer, 'http://localhost:3000')
+  assert.equal(defaultIssuer, 'https://id.lubbalmandumah.com')
   assert.equal(defaultCallback, 'http://localhost:3001/api/auth/callback')
 })

@@ -3,6 +3,11 @@ import { generateCodeVerifier, generateCodeChallenge, generateState, generateNon
 
 export const dynamic = 'force-dynamic'
 
+function redact(val: string): string {
+  if (!val || val.length < 8) return '***'
+  return `${val.slice(0, 4)}...${val.slice(-4)}`
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const returnUrl = searchParams.get('returnUrl') || '/'
@@ -17,6 +22,15 @@ export async function GET(request: NextRequest) {
   const challenge = generateCodeChallenge(verifier)
   const stateRaw = generateState()
   const nonce = generateNonce()
+
+  // Diagnostic trace (Redacted)
+  console.log('[OIDC SSO INIT TRACE]', {
+    generatedNonceRedacted: redact(nonce),
+    stateIdentifierRedacted: redact(stateRaw),
+    pkceVerifierRedacted: redact(verifier),
+    cookieName: 'nexora_nonce',
+    targetAuthorizeUrl: authorizeEndpoint
+  })
 
   // Embed returnUrl securely into state payload
   const statePayload = Buffer.from(JSON.stringify({ state: stateRaw, returnUrl })).toString('base64url')
@@ -33,10 +47,11 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(ssoUrl.toString())
 
-  // Store short-lived authorization security state in HTTP-only cookies
+  // Cookie attributes: set secure=true ONLY if served over HTTPS to avoid dropping cookies on http://localhost:3001
+  const isHttps = request.nextUrl.protocol === 'https:'
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 600 // 10 minutes

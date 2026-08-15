@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (invErr) throw invErr
 
     // 3. Send Inter-Service Signed Invitation Request to LAM ID
-    const lamIssuer = process.env.LAM_OIDC_ISSUER || 'http://localhost:3000'
+    const lamIssuer = process.env.LAM_OIDC_ISSUER || 'https://id.lubbalmandumah.com'
     const lamInvitationEndpoint = `${lamIssuer}/api/inter-service/invitations`
     const secret = getInterServiceSecret()
 

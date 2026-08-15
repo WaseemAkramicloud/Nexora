@@ -6,6 +6,11 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
+function redact(val: string): string {
+  if (!val || val.length < 8) return '***'
+  return `${val.slice(0, 4)}...${val.slice(-4)}`
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -16,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     if (oauthError) {
       return NextResponse.redirect(
-        new URL(`/auth/unauthorized?reason=${encodeURIComponent(oauthErrorDesc || oauthError)}`, request.url)
+        new URL(`/auth/unauthorized?reason=${encodeURIComponent(oauthErrorDesc || oauthError)}&type=security`, request.url)
       )
     }
 
@@ -25,10 +30,18 @@ export async function GET(request: NextRequest) {
     const codeVerifier = request.cookies.get('nexora_code_verifier')?.value
     const storedNonce = request.cookies.get('nexora_nonce')?.value
 
+    console.log('[OIDC CALLBACK TRACE]', {
+      hasStateQuery: Boolean(stateQuery),
+      hasStoredState: Boolean(storedState),
+      hasCodeVerifier: Boolean(codeVerifier),
+      hasStoredNonce: Boolean(storedNonce),
+      storedNonceRedacted: redact(storedNonce || '')
+    })
+
     // 1. Strict OAuth 2.0 State Validation (Anti-CSRF)
     if (!stateQuery || !storedState || stateQuery !== storedState) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=OAuth+state+validation+failed+or+session+expired', request.url)
+        new URL('/auth/unauthorized?reason=OAuth+state+validation+failed+or+session+expired&type=security', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -47,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     if (!code || !codeVerifier) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=Missing+authorization+code+or+PKCE+verifier', request.url)
+        new URL('/auth/unauthorized?reason=Missing+authorization+code+or+PKCE+verifier&type=security', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -75,7 +88,7 @@ export async function GET(request: NextRequest) {
       })
     } catch (fetchErr: any) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=Authentication+service+temporarily+unavailable', request.url)
+        new URL('/auth/unauthorized?reason=Authentication+service+temporarily+unavailable&type=security', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -91,7 +104,7 @@ export async function GET(request: NextRequest) {
         // use raw text if available
       }
       const response = NextResponse.redirect(
-        new URL(`/auth/unauthorized?reason=${encodeURIComponent(parsedReason)}`, request.url)
+        new URL(`/auth/unauthorized?reason=${encodeURIComponent(parsedReason)}&type=security`, request.url)
       )
       clearAuthCookies(response)
       return response
@@ -102,7 +115,7 @@ export async function GET(request: NextRequest) {
 
     if (!rawToken) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=LAM+ID+token+response+missing+id_token', request.url)
+        new URL('/auth/unauthorized?reason=LAM+ID+token+response+missing+id_token&type=security', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -113,9 +126,15 @@ export async function GET(request: NextRequest) {
       expectedNonce: storedNonce
     })
 
+    console.log('[OIDC TOKEN VERIFICATION TRACE]', {
+      valid: verifyRes.valid,
+      error: verifyRes.error,
+      returnedTokenNonceRedacted: redact(verifyRes.payload?.nonce || '')
+    })
+
     if (!verifyRes.valid || !verifyRes.payload) {
       const response = NextResponse.redirect(
-        new URL(`/auth/unauthorized?reason=${encodeURIComponent(verifyRes.error || 'Token validation failed')}`, request.url)
+        new URL(`/auth/unauthorized?reason=${encodeURIComponent(verifyRes.error || 'Token validation failed')}&type=security`, request.url)
       )
       clearAuthCookies(response)
       return response
@@ -127,7 +146,7 @@ export async function GET(request: NextRequest) {
     const grantedProducts = tokenPayload.products || []
     if (!grantedProducts.includes('nexora')) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=Product+access+to+NEXORA+is+not+assigned+for+your+account', request.url)
+        new URL('/auth/unauthorized?reason=Product+access+to+NEXORA+is+not+assigned+for+your+account&type=entitlement', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -137,7 +156,7 @@ export async function GET(request: NextRequest) {
     const lamCompanyId = tokenPayload.company_id
     if (!lamCompanyId) {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=Missing+company+context+in+LAM+identity', request.url)
+        new URL('/auth/unauthorized?reason=Missing+company+context+in+LAM+identity&type=entitlement', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -145,8 +164,8 @@ export async function GET(request: NextRequest) {
 
     const lamCustomerId = tokenPayload.sub
     const email = tokenPayload.email
-    const firstName = tokenPayload.first_name || 'User'
-    const lastName = tokenPayload.last_name || ''
+    const firstName = tokenPayload.first_name || tokenPayload.given_name || 'User'
+    const lastName = tokenPayload.last_name || tokenPayload.family_name || ''
     const lamCompanyRole = tokenPayload.company_role || 'sales_user'
 
     const tenant = await getOrCreateTenantForCompany(lamCompanyId, `${firstName}'s Enterprise Workspace`)
@@ -154,7 +173,7 @@ export async function GET(request: NextRequest) {
     // Check if tenant or entitlement is suspended
     if (tenant.status === 'suspended' || (tenant as any).entitlement_status === 'suspended') {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=NEXORA+workspace+subscription+is+suspended', request.url)
+        new URL('/auth/unauthorized?reason=NEXORA+workspace+subscription+is+suspended&type=entitlement', request.url)
       )
       clearAuthCookies(response)
       return response
@@ -165,14 +184,14 @@ export async function GET(request: NextRequest) {
 
     if (membership.status === 'suspended' || membership.status === 'disabled') {
       const response = NextResponse.redirect(
-        new URL('/auth/unauthorized?reason=Your+NEXORA+user+membership+is+disabled', request.url)
+        new URL('/auth/unauthorized?reason=Your+NEXORA+user+membership+is+disabled&type=entitlement', request.url)
       )
       clearAuthCookies(response)
       return response
     }
 
     // 7. Check Platform Superadmin Status
-    let isPlatformAdmin = Boolean(tokenPayload.is_platform_admin)
+    let isPlatformAdmin = Boolean(tokenPayload.is_platform_admin || tokenPayload.is_nexora_platform_admin)
     if (!isPlatformAdmin) {
       const supabase = getSupabaseAdmin()
       const { data: adminRecord } = await supabase
@@ -205,7 +224,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL(returnUrl, request.url))
     
     // Set NEXORA session cookie
-    setSessionCookieInResponse(response, sessionData)
+    setSessionCookieInResponse(response, sessionData, request.nextUrl.protocol === 'https:')
     // Clear temporary OAuth cookies
     clearAuthCookies(response)
 
@@ -213,7 +232,7 @@ export async function GET(request: NextRequest) {
   } catch (err: any) {
     console.error('SSO Callback error:', err)
     const response = NextResponse.redirect(
-      new URL(`/auth/unauthorized?reason=${encodeURIComponent(err.message || 'SSO Authentication failed')}`, request.url)
+      new URL(`/auth/unauthorized?reason=${encodeURIComponent(err.message || 'SSO Authentication failed')}&type=security`, request.url)
     )
     clearAuthCookies(response)
     return response
@@ -226,12 +245,12 @@ function clearAuthCookies(response: NextResponse) {
   response.cookies.set('nexora_nonce', '', { maxAge: 0, path: '/' })
 }
 
-function setSessionCookieInResponse(response: NextResponse, sessionData: any) {
+function setSessionCookieInResponse(response: NextResponse, sessionData: any, isHttps: boolean) {
   const { signNexoraSessionToken } = require('@/lib/auth/jwt')
   const sessionToken = signNexoraSessionToken(sessionData, 7 * 24 * 60 * 60)
   response.cookies.set('nexora_session', sessionToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     sameSite: 'lax',
     path: '/',
     maxAge: 7 * 24 * 60 * 60

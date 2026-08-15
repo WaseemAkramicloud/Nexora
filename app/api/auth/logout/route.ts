@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   let targetRedirect = new URL('/', request.url).toString()
 
   if (isGlobalLogout) {
-    const lamLogoutEndpoint = process.env.LAM_OIDC_LOGOUT_URL || `${process.env.LAM_PORTAL_URL || 'http://localhost:3000'}/api/sso/logout`
+    const lamLogoutEndpoint = process.env.LAM_OIDC_LOGOUT_URL || `${process.env.LAM_PORTAL_URL || 'https://id.lubbalmandumah.com'}/api/sso/logout`
     targetRedirect = lamLogoutEndpoint
   }
 

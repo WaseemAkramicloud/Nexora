@@ -1,21 +1,24 @@
 'use client'
 
 import React from 'react'
-import { ShieldAlert, ArrowLeft, KeyRound, ExternalLink } from 'lucide-react'
+import { ShieldAlert, ArrowLeft, KeyRound, ExternalLink, Lock } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n/context'
 
 export default function UnauthorizedPage({
   searchParams
 }: {
-  searchParams?: { reason?: string }
+  searchParams?: { reason?: string; type?: string }
 }) {
   const { t, locale, setLocale, dir } = useTranslation()
   const reason = searchParams?.reason || t.auth.unauthorizedDesc
+  const errType = searchParams?.type || ''
+
+  const isSecurityError = errType === 'security' || /nonce|state|pkce|token|signature|verifier|verification|expired/i.test(reason)
 
   return (
     <div className="min-h-screen bg-[#0A0D14] text-white flex flex-col justify-center items-center p-6 relative overflow-hidden" dir={dir}>
       {/* Dynamic Ambient Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] ${isSecurityError ? 'bg-amber-600/15' : 'bg-red-600/15'} rounded-full blur-[120px] pointer-events-none`} />
       
       {/* Language Selector Header */}
       <div className="absolute top-6 right-6 flex items-center gap-2 bg-[#121824] border border-white/10 rounded-full px-3 py-1.5 text-xs text-slate-300">
@@ -24,13 +27,13 @@ export default function UnauthorizedPage({
         <button onClick={() => setLocale('ar')} className={`px-2 py-0.5 rounded ${locale === 'ar' ? 'bg-indigo-600 text-white font-semibold' : 'hover:text-white'}`}>AR (عربي)</button>
       </div>
 
-      <div className="max-w-md w-full bg-[#121824]/80 backdrop-blur-xl border border-red-500/20 rounded-2xl p-8 shadow-2xl relative z-10 text-center">
-        <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6 text-red-400 shadow-lg shadow-red-500/10">
-          <ShieldAlert className="w-8 h-8" />
+      <div className={`max-w-md w-full bg-[#121824]/80 backdrop-blur-xl border ${isSecurityError ? 'border-amber-500/30' : 'border-red-500/20'} rounded-2xl p-8 shadow-2xl relative z-10 text-center`}>
+        <div className={`w-16 h-16 ${isSecurityError ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-red-500/10 border-red-500/30 text-red-400'} border rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg`}>
+          {isSecurityError ? <Lock className="w-8 h-8" /> : <ShieldAlert className="w-8 h-8" />}
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-2">
-          {t.auth.unauthorizedTitle}
+          {isSecurityError ? 'Authentication Security Failure' : t.auth.unauthorizedTitle}
         </h1>
 
         <p className="text-slate-400 text-sm leading-relaxed mb-6">
@@ -44,11 +47,15 @@ export default function UnauthorizedPage({
           </div>
           <div className="flex items-center justify-between">
             <span>Authentication Engine</span>
-            <span>LAM ID / SSO</span>
+            <span>LAM ID / OIDC SSO</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Entitlement Status</span>
-            <span className="text-red-400 font-semibold uppercase">Revoked / Inactive</span>
+            <span>Verification Status</span>
+            {isSecurityError ? (
+              <span className="text-amber-400 font-semibold uppercase">Security Check Failed</span>
+            ) : (
+              <span className="text-red-400 font-semibold uppercase">Access Entitlement Revoked</span>
+            )}
           </div>
         </div>
 

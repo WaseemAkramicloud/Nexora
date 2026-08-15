@@ -192,12 +192,16 @@ async function runLiveE2ESuite() {
     const ssoRes = await fetch(`${NEXORA_URL}/api/auth/sso`, { redirect: 'manual' })
     const redirectUrl = ssoUrlLocation(ssoRes)
 
-    if (!redirectUrl.includes('http://localhost:3000/api/sso/authorize')) {
-      throw new Error(`Expected redirect to http://localhost:3000/api/sso/authorize, got ${redirectUrl}`)
+    if (!redirectUrl.includes('/api/sso/authorize')) {
+      throw new Error(`Expected redirect to /api/sso/authorize, got ${redirectUrl}`)
     }
 
     if (!redirectUrl.includes('code_challenge_method=S256')) {
       throw new Error('Missing code_challenge_method=S256 in PKCE authorization URL')
+    }
+
+    if (!redirectUrl.includes('nonce=')) {
+      throw new Error('Missing nonce parameter in PKCE authorization URL')
     }
 
     logReport('7. Open NEXORA directly and confirm redirect to LAM ID with PKCE', 'LIVE END-TO-END TEST PASSED', `Redirected cleanly to ${redirectUrl}`)
@@ -207,7 +211,8 @@ async function runLiveE2ESuite() {
 
   // STEP 8: Validate live JWKS endpoint of LAM ID
   try {
-    const jwksRes = await fetch(`${LAM_URL}/.well-known/jwks.json`)
+    const jwksUrl = process.env.LAM_OIDC_JWKS_URL || 'https://id.lubbalmandumah.com/.well-known/jwks.json'
+    const jwksRes = await fetch(jwksUrl)
     if (!jwksRes.ok) throw new Error(`JWKS endpoint status ${jwksRes.status}`)
     const jwksData = await jwksRes.json()
 
@@ -215,7 +220,7 @@ async function runLiveE2ESuite() {
       throw new Error('Invalid RS256 JWKS key structure returned by LAM')
     }
 
-    logReport('8. Validate live JWKS endpoint of LAM ID', 'LIVE END-TO-END TEST PASSED', `Fetched live RS256 JWKS with kid '${jwksData.keys[0].kid}' from ${LAM_URL}/.well-known/jwks.json`)
+    logReport('8. Validate live JWKS endpoint of LAM ID', 'LIVE END-TO-END TEST PASSED', `Fetched live RS256 JWKS with kid '${jwksData.keys[0].kid}' from ${jwksUrl}`)
   } catch (err) {
     logReport('8. Validate live JWKS endpoint of LAM ID', 'LIVE END-TO-END TEST FAILED', err.message)
   }

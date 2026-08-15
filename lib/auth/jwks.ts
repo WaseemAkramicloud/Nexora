@@ -20,12 +20,15 @@ export interface LamTokenPayload {
   sub: string
   aud: string | string[]
   email: string
-  first_name: string
+  first_name?: string
+  given_name?: string
   last_name?: string | null
+  family_name?: string | null
   company_id?: string | null
   company_role?: string | null
   products?: string[]
   is_platform_admin?: boolean
+  is_nexora_platform_admin?: boolean
   nonce?: string
   exp: number
   iat: number
@@ -170,9 +173,17 @@ export async function verifyLamOidcToken(
       return { valid: false, error: 'Token missing required subject (sub) claim.' }
     }
 
-    // 5. Validate optional nonce
-    if (options.expectedNonce && payload.nonce !== options.expectedNonce) {
-      return { valid: false, error: 'Token nonce mismatch.' }
+    // 5. Validate nonce
+    if (options.expectedNonce !== undefined) {
+      if (!options.expectedNonce) {
+        return { valid: false, error: 'Missing stored authentication nonce in session cookie.' }
+      }
+      if (!payload.nonce) {
+        return { valid: false, error: 'ID token missing required nonce claim.' }
+      }
+      if (payload.nonce !== options.expectedNonce) {
+        return { valid: false, error: 'Token nonce mismatch.' }
+      }
     }
 
     return { valid: true, payload }
