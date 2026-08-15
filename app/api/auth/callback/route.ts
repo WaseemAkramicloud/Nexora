@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Exchange Authorization Code + PKCE Verifier for Tokens
-    const tokenEndpoint = process.env.LAM_OIDC_TOKEN_URL || 'http://localhost:3000/api/sso/token'
+    const tokenEndpoint = process.env.LAM_OIDC_TOKEN_URL || 'https://id.lubbalmandumah.com/api/sso/token'
     const clientId = process.env.LAM_CLIENT_ID || 'lam_app_nexora'
     const clientSecret = process.env.LAM_CLIENT_SECRET || ''
     const redirectUri = process.env.NEXORA_CALLBACK_URL || `${request.nextUrl.origin}/api/auth/callback`

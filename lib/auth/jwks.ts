@@ -39,7 +39,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
  * Retrieves configured LAM OIDC Issuer.
  */
 export function getLamIssuer(): string {
-  return process.env.LAM_OIDC_ISSUER || 'http://localhost:3000'
+  return process.env.LAM_OIDC_ISSUER || 'https://id.lubbalmandumah.com'
 }
 
 /**

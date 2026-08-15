@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const returnUrl = searchParams.get('returnUrl') || '/'
 
   // Environment-driven LAM OIDC configuration
-  const authorizeEndpoint = process.env.LAM_OIDC_AUTHORIZE_URL || 'http://localhost:3000/api/sso/authorize'
+  const authorizeEndpoint = process.env.LAM_OIDC_AUTHORIZE_URL || 'https://id.lubbalmandumah.com/api/sso/authorize'
   const clientId = process.env.LAM_CLIENT_ID || 'lam_app_nexora'
   const redirectUri = process.env.NEXORA_CALLBACK_URL || `${request.nextUrl.origin}/api/auth/callback`
 
