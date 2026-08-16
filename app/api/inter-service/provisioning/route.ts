@@ -113,6 +113,59 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (action === 'deprovision' || action === 'delete') {
+      // Deletion of test/deprovisioned tenant workspace
+      // Validate that tenant actually belongs to lamCompanyId
+      const { data: tenant, error: fetchErr } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('lam_company_id', lamCompanyId)
+        .maybeSingle()
+
+      if (fetchErr) {
+        return NextResponse.json({ error: `Database error querying tenant: ${fetchErr.message}` }, { status: 500 })
+      }
+
+      if (!tenant) {
+        return NextResponse.json({
+          success: true,
+          lamCompanyId,
+          message: 'Tenant workspace not found or already deleted'
+        })
+      }
+
+      const tenantId = tenant.id
+
+      // Delete dependent tables in order to maintain FK integrity
+      await supabase.from('team_invitations').delete().eq('tenant_id', tenantId)
+      await supabase.from('memberships').delete().eq('tenant_id', tenantId)
+      await supabase.from('activities').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_records').delete().eq('tenant_id', tenantId)
+      await supabase.from('contacts').delete().eq('tenant_id', tenantId)
+      await supabase.from('business_sources').delete().eq('tenant_id', tenantId)
+      await supabase.from('businesses').delete().eq('tenant_id', tenantId)
+      await supabase.from('campaign_targeting_rules').delete().eq('tenant_id', tenantId)
+      await supabase.from('target_areas').delete().eq('tenant_id', tenantId)
+      await supabase.from('campaigns').delete().eq('tenant_id', tenantId)
+      await supabase.from('audit_logs').delete().eq('tenant_id', tenantId)
+
+      // Delete business_merges if present
+      await supabase.from('business_merges').delete().eq('tenant_id', tenantId)
+
+      // Finally delete tenant workspace
+      const { error: delErr } = await supabase.from('tenants').delete().eq('id', tenantId)
+      if (delErr) {
+        return NextResponse.json({ error: `Failed to delete tenant record: ${delErr.message}` }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        tenantId,
+        lamCompanyId,
+        message: 'Tenant workspace deprovisioned and deleted successfully'
+      })
+    }
+
     return NextResponse.json({ error: `Unsupported provisioning action: '${action}'` }, { status: 400 })
   } catch (err: any) {
     console.error('Provisioning inter-service error:', err)

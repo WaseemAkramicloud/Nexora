@@ -98,11 +98,21 @@ The central LAM ID application registry (`sso_applications` record for `client_i
 
 ---
 
-## 6. Vercel & Domain Deployment Steps
+---
 
-To deploy NEXORA to `https://nexora.lubbalmandumah.com`:
+## 7. E2E Testing & Guaranteed Teardown
 
-1. **Connect GitHub Repository**: Link `https://github.com/WaseemAkramicloud/Nexora.git` as a Next.js project in Vercel.
-2. **Set Environment Variables**: Add production environment variables listed above in Vercel Project Settings.
-3. **Attach Custom Domain**: In Vercel Project Settings -> Domains, add `nexora.lubbalmandumah.com`.
-4. **Configure DNS**: Add CNAME record `nexora` -> `cname.vercel-dns.com` in your DNS provider control panel for `lubbalmandumah.com`.
+For full details on live integration testing between LAM ID and NEXORA, see [E2E Architecture & Teardown Documentation](file:///Users/waseemakram/My%20Comp%20Data/My%20ERPs/Nexora/docs/E2E_TESTING.md).
+
+```bash
+# Run live E2E test suite (requires explicit production acknowledgement if targeting live DBs)
+ALLOW_PRODUCTION_E2E=true node scripts/live-e2e-suite.js
+
+# Test controlled failure teardown behavior
+ALLOW_PRODUCTION_E2E=true E2E_SIMULATE_FAILURE_STEP=7 node scripts/live-e2e-suite.js
+```
+
+> [!CAUTION]
+> **BROWSER VERIFICATION REQUIREMENT (SAFARI ONLY)**:
+> All manual or browser-based user verification (SSO login, PKCE flow, session cookies) must be performed strictly using **Safari on macOS**. Google Chrome / Chromium must not be used.
+

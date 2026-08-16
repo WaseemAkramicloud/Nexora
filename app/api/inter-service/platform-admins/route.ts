@@ -68,6 +68,23 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (action === 'delete') {
+      // Exactly scoped deletion by primary lam_customer_id
+      const { data, error } = await supabase
+        .from('platform_administrators')
+        .delete()
+        .eq('lam_customer_id', lamCustomerId)
+        .select('*')
+
+      if (error) throw error
+
+      return NextResponse.json({
+        success: true,
+        deletedCount: data?.length || 0,
+        message: `Platform administrator record for '${lamCustomerId}' deleted successfully`
+      })
+    }
+
     return NextResponse.json({ error: `Unsupported platform-admin action '${action}'` }, { status: 400 })
   } catch (err: any) {
     console.error('Platform admin inter-service error:', err)
