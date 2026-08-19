@@ -38,26 +38,9 @@ export interface LamTokenPayload {
 let jwksCache: { keys: JwkKey[]; fetchedAt: number } | null = null
 const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
 
-/**
- * Retrieves configured LAM OIDC Issuer.
- */
-export function getLamIssuer(): string {
-  return process.env.LAM_OIDC_ISSUER || 'https://id.lubbalmandumah.com'
-}
+import { getLamIssuer, getLamClientId, getLamJwksEndpoint as getLamJwksUrl } from '@/lib/auth/config'
 
-/**
- * Retrieves configured LAM Client ID.
- */
-export function getLamClientId(): string {
-  return process.env.LAM_CLIENT_ID || 'lam_app_nexora'
-}
-
-/**
- * Retrieves configured LAM JWKS URL.
- */
-export function getLamJwksUrl(): string {
-  return process.env.LAM_OIDC_JWKS_URL || `${getLamIssuer()}/.well-known/jwks.json`
-}
+export { getLamIssuer, getLamClientId, getLamJwksUrl }
 
 /**
  * Fetch JWKS keys from LAM OIDC provider with in-memory caching and rotation handling.
