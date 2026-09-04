@@ -4,14 +4,14 @@ import { clearSessionCookie } from '@/lib/auth/session'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  clearSessionCookie()
+  await clearSessionCookie()
   const response = NextResponse.json({ success: true, message: 'Signed out of NEXORA successfully' })
   response.cookies.set('nexora_session', '', { maxAge: 0, path: '/' })
   return response
 }
 
 export async function GET(request: NextRequest) {
-  clearSessionCookie()
+  await clearSessionCookie()
 
   const searchParams = request.nextUrl.searchParams
   const isGlobalLogout = searchParams.get('global') === 'true' || searchParams.get('lam') === 'true'

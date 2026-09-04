@@ -4,7 +4,8 @@ import { verifyLamOidcToken, LamTokenPayload } from './jwks'
 export type { LamTokenPayload } from './jwks'
 export { verifyLamOidcToken } from './jwks'
 
-export interface NexoraSessionPayload {
+export interface NexoraLegacySessionPayload {
+  v?: 1
   lamCustomerId: string
   lamCompanyId: string
   tenantId: string
@@ -20,6 +21,15 @@ export interface NexoraSessionPayload {
   exp?: number
   iat?: number
 }
+
+export interface NexoraFederationSessionPayload {
+  v: 2
+  sid: string
+  exp?: number
+  iat?: number
+}
+
+export type NexoraSessionPayload = NexoraLegacySessionPayload | NexoraFederationSessionPayload
 
 /**
  * Retrieve secret used strictly for signing local NEXORA HTTP-only session cookies.
@@ -46,13 +56,13 @@ export function signNexoraSessionToken(payload: Record<string, any>, expiresInSe
 /**
  * Verify local NEXORA session token from HTTP-only cookie.
  */
-export function verifyNexoraSessionToken(token: string): { valid: boolean; payload?: NexoraSessionPayload; error?: string } {
+export function verifyNexoraSessionToken(token: string): { valid: boolean; payload?: any; error?: string } {
   try {
     if (!token || typeof token !== 'string') {
       return { valid: false, error: 'Session token is missing.' }
     }
     const secret = getNexoraSessionSecret()
-    const decoded = jwt.verify(token, secret) as NexoraSessionPayload
+    const decoded = jwt.verify(token, secret)
     return { valid: true, payload: decoded }
   } catch (err: any) {
     return { valid: false, error: err.message || 'Session verification failed.' }

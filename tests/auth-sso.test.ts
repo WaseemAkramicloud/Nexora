@@ -166,13 +166,13 @@ test('9. User without NEXORA product entitlement is rejected', async () => {
 
 test('10. Suspended entitlement status blocks access', () => {
   const entitlementStatus = 'suspended'
-  const isAllowed = entitlementStatus === 'active'
+  const isAllowed = (entitlementStatus as string) === 'active'
   assert.equal(isAllowed, false, 'Suspended entitlement must block access')
 })
 
 test('11. Suspended NEXORA tenant blocks workspace access', () => {
   const tenantStatus = 'suspended'
-  const isAllowed = tenantStatus === 'active'
+  const isAllowed = (tenantStatus as string) === 'active'
   assert.equal(isAllowed, false, 'Suspended NEXORA tenant workspace must block user entry')
 })
 
@@ -257,7 +257,7 @@ test('19. Production development bypass is impossible when ENABLE_DEV_AUTH is fa
   const isProduction = true
   const enableDevAuth = false
 
-  const allowDevBypass = !isProduction && enableDevAuth === true
+  const allowDevBypass = !isProduction && (enableDevAuth as boolean) === true
   assert.equal(allowDevBypass, false, 'Development bypass must be impossible in production')
 })
 

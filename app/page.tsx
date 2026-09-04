@@ -1121,7 +1121,7 @@ export default function NexoraApp() {
                       </span>
                     </div>
                     <div className="text-slate-300 bg-[#121824] p-3 rounded-lg border border-white/5">
-                      "Hello Alexandre, we are reviewing your NEXORA enterprise proposal. Can we schedule the technical evaluation call tomorrow at 14:00 CET?"
+                      &quot;Hello Alexandre, we are reviewing your NEXORA enterprise proposal. Can we schedule the technical evaluation call tomorrow at 14:00 CET?&quot;
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-500">
                       <span>Company: <strong className="text-slate-300">Aetheria Cloud Systems</strong></span>
@@ -1145,7 +1145,7 @@ export default function NexoraApp() {
                       </span>
                     </div>
                     <div className="text-slate-300 bg-[#121824] p-3 rounded-lg border border-white/5">
-                      "Please contact our VP of IT Infrastructure, Marc Laurent, at m.laurent@vanguard-logistics.com for enterprise evaluation."
+                      &quot;Please contact our VP of IT Infrastructure, Marc Laurent, at m.laurent@vanguard-logistics.com for enterprise evaluation.&quot;
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-500">
                       <span>Company: <strong className="text-slate-300">Vanguard Logistics SAS</strong></span>
