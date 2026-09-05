@@ -84,17 +84,17 @@ export function getMaftahOAuthJwksUrl(): string {
 
 export function getMaftahOAuthClientId(): string {
   const clientId = process.env.MAFTAH_OAUTH_CLIENT_ID
-  if (clientId && clientId.trim() !== '') {
-    return clientId.trim()
+  if (!clientId || clientId.trim() === '') {
+    if (process.env.NODE_ENV === 'test') {
+      return 'test_actual_provider_client_id'
+    }
+    throw new Error('CRITICAL CONFIGURATION ERROR: MAFTAH_OAUTH_CLIENT_ID environment variable is missing or empty.')
   }
-  if (process.env.NODE_ENV === 'test') {
-    return 'test_actual_provider_client_id'
-  }
-  return '00000000-0000-0000-0000-000000000001'
+  return clientId.trim()
 }
 
 export function getMaftahOAuthClientSecret(): string {
-  return process.env.MAFTAH_OAUTH_CLIENT_SECRET || 'maftah_dev_client_secret_placeholder'
+  return process.env.MAFTAH_OAUTH_CLIENT_SECRET || ''
 }
 
 export function getMaftahFederationResolveUrl(): string {
@@ -115,6 +115,9 @@ export function getNexoraCredentialVaultKey(): Buffer {
   const hexKey = process.env.NEXORA_CREDENTIAL_VAULT_KEY
   
   if (!hexKey || hexKey.trim() === '') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CRITICAL SECURITY ERROR: NEXORA_CREDENTIAL_VAULT_KEY must be configured in production.')
+    }
     return Buffer.from('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'hex')
   }
   
