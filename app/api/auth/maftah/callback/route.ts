@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import crypto from "crypto"
 import { getSupabaseAdmin } from "@/lib/supabase/admin"
 import { setFederationSessionCookie } from "@/lib/auth/session"
+import { getNexoraBaseUrl } from "@/lib/auth/config"
 import { logAuthOperationalEvent } from "@/lib/auth/observability"
 import {
   getMaftahOAuthIssuer,
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get("state")
   const errorParam = url.searchParams.get("error")
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"
+  const baseUrl = getNexoraBaseUrl()
 
   const cookieStore = cookies()
   const savedState = cookieStore.get("nexora_maftah_oauth_state")?.value

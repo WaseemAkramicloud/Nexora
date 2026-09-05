@@ -61,5 +61,11 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set("code_challenge", codeChallenge)
   authUrl.searchParams.set("code_challenge_method", "S256")
 
-  return NextResponse.redirect(authUrl.toString(), 302)
+  const response = NextResponse.redirect(authUrl.toString(), 302)
+  response.cookies.set("nexora_maftah_oauth_state", state, cookieOptions)
+  response.cookies.set("nexora_maftah_code_verifier", codeVerifier, cookieOptions)
+  response.cookies.set("nexora_maftah_nonce", nonce, cookieOptions)
+  response.cookies.set("nexora_maftah_corr_id", correlationId, cookieOptions)
+
+  return response
 }
