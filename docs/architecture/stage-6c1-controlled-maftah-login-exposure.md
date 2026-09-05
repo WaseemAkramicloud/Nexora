@@ -1,17 +1,14 @@
 # Stage 6C.1 — Controlled Maftah Login Exposure, Operational Observability & Rollout Foundation
 
-## 1. Executive Summary & Stage Scope
+## 1. Executive Summary & Baseline Traceability
 
-Stage 6C.1 transitions the Maftah → NEXORA federation from verification/engineering topology into a **controlled rollout foundation** with zero disruption to legacy customers.
+Stage 6C.1 transitions the Maftah → NEXORA federation from engineering topology verification into a **controlled rollout foundation** with zero disruption to legacy customers.
 
-### Architectural Invariants:
-1. **Federation Freeze**: The underlying OIDC/OAuth PKCE federation, token verification, session lifecycle, 7-point access matrix, and credential vault remain 100% frozen.
-2. **Deterministic Exposure State**: Entry into Maftah login is gated server-side in NEXORA via `NEXORA_MAFTAH_LOGIN_EXPOSURE` (`hidden` | `pilot` | `public`).
-3. **Fail-Closed Safety**: Any undefined, invalid, or empty exposure setting strictly resolves to `hidden`.
-4. **Initiation-Only Gating**: Hidden mode blocks *new initiation* (`/login/maftah` and `/api/auth/maftah` return HTTP 404). Valid in-flight callbacks (`/api/auth/maftah/callback`) and existing active sessions are unaffected.
-5. **Zero Normal Login Alteration**: The default customer entrypoint (`/` unauthenticated view) remains 100% legacy SSO.
-6. **Dedicated Pilot Route**: Controlled pilot users initiate authentication exclusively at `/login/maftah`.
-7. **Strict Safe Observability**: Operational telemetry uses private storage (`nexora_internal.auth_operational_events`), narrow SECURITY DEFINER RPC (`public.service_log_auth_operational_event`), and an explicit allowlist that rejects all credentials, secrets, tokens, codes, and raw IP addresses.
+### Verified Git Commit Traceability:
+- **NEXORA Pre-6C Baseline**: `c043f5b5a69f31ba50600c757cec6f690596077d` (`feat(federation): implement Nexora parallel Maftah OAuth adapter, multi-org identity resolution, AES-GCM vault, and session continuity`)
+- **NEXORA Stage 6C.1 HEAD**: `66977b63c58d4d5fe648c8a6ab67470f4e874454` (Pushed to `origin/main`)
+- **LAM Maftah Pre-6C Baseline**: `7aa7226327de867fcc0fd8935fbd60b3888ab180` (`docs(stage-6b): freeze Stage 6B reference architecture baseline`)
+- **LAM Maftah Stage 6C.1 HEAD**: `0db8bef9c96d5fda3cdd388e33c74aa69714e05d` (Pushed to `origin/main`)
 
 ---
 
@@ -55,11 +52,11 @@ export function getNexoraMaftahExposureMode(): 'hidden' | 'pilot' | 'public' {
 - **Behavior**:
   - In `hidden` mode: Server returns `notFound()` (HTTP 404).
   - In `pilot` / `public` mode: Renders dedicated Maftah Pilot Login interface.
-- **UI Design System**:
-  - Dark glassmorphism card matching NEXORA design language.
-  - "LAM ID SSO (Maftah Pilot)" branded action button linking directly to `/api/auth/maftah`.
+- **Approved Visual Direction**:
+  - Light, restrained, clean, professional, understated style (`bg-slate-50`, clean white card `bg-white border border-slate-200`, `text-slate-900`, `bg-indigo-600` primary button).
+  - Primary CTA: "Continue with LAM Maftah" linking directly to `/api/auth/maftah`.
   - Secondary fallback link: "Return to standard login" linking to `/`.
-  - Full i18n support: English (`en`), French (`fr`), Arabic (`ar` with `dir="rtl"`).
+  - Full multilingual support: English (`en`), French (`fr`), and Arabic (`ar` with `dir="rtl"`).
 
 ---
 
@@ -71,49 +68,13 @@ export function getNexoraMaftahExposureMode(): 'hidden' | 'pilot' | 'public' {
 - **PostgREST OpenAPI**: Zero exposure to `PUBLIC`, `anon`, or `authenticated` roles.
 
 ### 4.2 Strict Metadata Allowlist (`lib/auth/observability.ts`)
-```typescript
-interface OperationalEventPayload {
-  eventType: string;          // e.g., 'maftah_login_started', 'maftah_token_exchanged'
-  provider: 'maftah' | 'legacy_sso' | 'dev_auth';
-  outcome: 'success' | 'failure' | 'pending' | 'info';
-  safeErrorCode?: string;     // High-level categorical error (e.g., 'state_mismatch')
-  environment?: string;       // Defaults to process.env.NODE_ENV
-  externalOrgId?: string;     // UUID or null
-  tenantId?: string;          // UUID or null
-  sessionId?: string;         // UUID or null
-  subject?: string;           // UUID string or null
-  correlationId?: string;     // Trace ID
-  metadata?: {
-    latency_ms?: number;
-    credential_version?: number;
-    revalidation_type?: 'none' | 'cached' | 'full';
-    flow?: string;
-  };
-}
-```
-
-### 4.3 Explicit Security Exclusions:
-- ❌ Zero credential logging (`access_token`, `refresh_token`, `id_token`).
-- ❌ Zero secret logging (`client_secret`, `vault_key`, `code_verifier`, `nonce`, `state`).
-- ❌ Zero raw network identifiers (`ip_address`, `user_agent` headers).
-- ❌ Zero free-form error stack traces or raw provider messages in `metadata`.
-- ❌ Zero blocking behavior (telemetry failures are caught and logged without throwing).
+- Allowed fields: `eventType`, `provider`, `outcome`, `safeErrorCode`, `environment`, `externalOrgId`, `tenantId`, `sessionId`, `subject`, `correlationId`, `metadata: { latency_ms, credential_version, revalidation_type, flow }`.
+- Prohibited & Discarded: All `tokens`, `secrets`, `passwords`, `cookies`, `code_verifiers`, `nonces`, `ip_address`, and free-form stack traces.
+- Telemetry failures are strictly non-fatal and safely isolated from the authentication execution flow.
 
 ---
 
-## 5. Rollback & Emergency Kill-Switch Runbook
+## 5. Hosting & Operational Mechanics
 
-### Immediate Rollback (Kill-Switch):
-Set the environment variable in production:
-```bash
-NEXORA_MAFTAH_LOGIN_EXPOSURE=hidden
-```
-**Effect**:
-- New OAuth initiations via `/api/auth/maftah` immediately return HTTP 404.
-- Pilot route `/login/maftah` immediately returns HTTP 404.
-- In-flight callback exchanges (`/api/auth/maftah/callback`) already initiated will still complete legitimately.
-- Existing active user sessions remain valid until natural expiration or logout.
-- Normal legacy login (`/api/auth/sso`) remains 100% operational.
-
-### Database Rollback:
-Execute `supabase/rollback/20260905000000_rollback_nexora_auth_operational_events.sql` if operational events schema removal is required.
+### Environment Propagation:
+In Vercel hosting, updating `NEXORA_MAFTAH_LOGIN_EXPOSURE` requires a **deployment rollout / redeploy** to propagate the new value across Serverless Function Lambdas. It is not instantaneous without a deployment trigger.
