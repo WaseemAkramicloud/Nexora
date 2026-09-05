@@ -10,7 +10,8 @@
 -- 4. Append-only enforcement: no UPDATE/DELETE privileges granted to any runtime roles.
 -- 5. Strict Database-Enforced Allowlist Metadata: reconstructs allowlist (latency_ms,
 --    credential_version, revalidation_type, flow) and strips all unknown JSON keys.
--- 6. Operational Retention: documented 60-day operational retention model.
+-- 6. Overflow-Safe Type Extraction: bounds numeric strings to 1-9 digits before integer cast.
+-- 7. Operational Retention: documented 60-day operational retention model.
 -- ==============================================================================
 
 -- 1. Ensure nexora_internal schema exists with strict revocation
@@ -82,15 +83,15 @@ DECLARE
 BEGIN
     -- 1. Extract and validate typed allowlisted metadata keys only
     IF p_metadata IS NOT NULL AND jsonb_typeof(p_metadata) = 'object' THEN
-        -- latency_ms (non-negative integer)
-        IF (p_metadata->>'latency_ms') ~ '^\\d+$' THEN
+        -- latency_ms (non-negative integer, bounded to 1-9 digits to prevent integer overflow)
+        IF (p_metadata->>'latency_ms') ~ '^[0-9]{1,9}$' THEN
             v_latency_ms := (p_metadata->>'latency_ms')::INT;
         ELSE
             v_latency_ms := NULL;
         END IF;
 
-        -- credential_version (non-negative integer)
-        IF (p_metadata->>'credential_version') ~ '^\\d+$' THEN
+        -- credential_version (non-negative integer, bounded to 1-9 digits to prevent integer overflow)
+        IF (p_metadata->>'credential_version') ~ '^[0-9]{1,9}$' THEN
             v_cred_version := (p_metadata->>'credential_version')::INT;
         ELSE
             v_cred_version := NULL;
