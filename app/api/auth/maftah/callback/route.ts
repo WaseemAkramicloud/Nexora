@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       safeErrorCode: errorParam,
       correlationId
     })
-    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(errorParam)}`, baseUrl), 302)
+    return NextResponse.redirect(new URL(`/login/maftah?error=${encodeURIComponent(errorParam)}`, baseUrl), 302)
   }
 
   if (!code || !state || !savedState || state !== savedState || !codeVerifier) {
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       safeErrorCode: "invalid_oauth_state",
       correlationId
     })
-    return NextResponse.redirect(new URL("/?error=invalid_oauth_state", baseUrl), 302)
+    return NextResponse.redirect(new URL("/login/maftah?error=invalid_oauth_state", baseUrl), 302)
   }
 
   // 1. Exchange authorization code for tokens
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       safeErrorCode: "token_exchange_failed",
       correlationId
     })
-    return NextResponse.redirect(new URL("/?error=token_exchange_failed", baseUrl), 302)
+    return NextResponse.redirect(new URL("/login/maftah?error=token_exchange_failed", baseUrl), 302)
   }
 
   const tokens = exchangeResult.tokens
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       safeErrorCode: "missing_id_token",
       correlationId
     })
-    return NextResponse.redirect(new URL("/?error=missing_id_token", baseUrl), 302)
+    return NextResponse.redirect(new URL("/login/maftah?error=missing_id_token", baseUrl), 302)
   }
 
   const idTokenResult = await verifyMaftahIdToken(tokens.id_token, {
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
       safeErrorCode: "invalid_id_token",
       correlationId
     })
-    return NextResponse.redirect(new URL("/?error=invalid_id_token", baseUrl), 302)
+    return NextResponse.redirect(new URL("/login/maftah?error=invalid_id_token", baseUrl), 302)
   }
 
   const issuer = getMaftahOAuthIssuer()
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       subject,
       correlationId
     })
-    return NextResponse.redirect(new URL("/?error=access_not_authorized", baseUrl), 302)
+    return NextResponse.redirect(new URL("/login/maftah?error=access_not_authorized", baseUrl), 302)
   }
 
   const resolveData = resolveResult.data
@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=workspace_not_provisioned", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=workspace_not_provisioned", baseUrl), 302)
     }
 
     // 5. Resolve tenant-scoped local identity link
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=membership_not_provisioned", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=membership_not_provisioned", baseUrl), 302)
     }
 
     if (identityLink.error === "identity_link_conflict") {
@@ -224,7 +224,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=identity_link_conflict", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=identity_link_conflict", baseUrl), 302)
     }
 
     if (identityLink.membership_status !== "active") {
@@ -238,7 +238,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=membership_not_active", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=membership_not_active", baseUrl), 302)
     }
 
     // 6. Create federation session (Absolute 8-Hour Session - Stage 6B.7)
@@ -263,7 +263,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=session_creation_failed", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=session_creation_failed", baseUrl), 302)
     }
 
     // 7. Store structured encrypted credentials in vault with AAD context
@@ -326,5 +326,5 @@ export async function GET(req: NextRequest) {
     subject,
     correlationId
   })
-  return NextResponse.redirect(new URL("/?error=access_not_authorized", baseUrl), 302)
+  return NextResponse.redirect(new URL("/login/maftah?error=access_not_authorized", baseUrl), 302)
 }

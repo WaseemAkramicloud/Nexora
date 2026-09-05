@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { getNexoraMaftahExposureMode } from "@/lib/auth/config"
 import { PilotLoginClient } from "./pilot-client"
@@ -12,5 +13,9 @@ export default function MaftahPilotLoginPage() {
     notFound()
   }
 
-  return <PilotLoginClient />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+      <PilotLoginClient />
+    </Suspense>
+  )
 }

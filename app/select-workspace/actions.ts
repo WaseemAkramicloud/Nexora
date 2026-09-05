@@ -22,7 +22,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       outcome: "failure",
       safeErrorCode: "invalid_selection"
     })
-    redirect("/?error=invalid_selection")
+    redirect("/login/maftah?error=invalid_selection")
   }
 
   const adminDb = getSupabaseAdmin()
@@ -37,7 +37,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       outcome: "failure",
       safeErrorCode: "transaction_expired"
     })
-    redirect("/?error=transaction_expired")
+    redirect("/login/maftah?error=transaction_expired")
   }
 
   let tokens: any
@@ -65,7 +65,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       safeErrorCode: "organization_access_denied",
       subject: tx.subject
     })
-    redirect("/?error=organization_access_denied")
+    redirect("/login/maftah?error=organization_access_denied")
   }
 
   const externalOrgId = resolveRes.data.organization.id
@@ -87,7 +87,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       externalOrgId,
       subject
     })
-    redirect("/?error=workspace_not_provisioned")
+    redirect("/login/maftah?error=workspace_not_provisioned")
   }
 
   // Resolve tenant-scoped local identity link
@@ -107,7 +107,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       externalOrgId,
       subject
     })
-    redirect("/?error=membership_not_provisioned")
+    redirect("/login/maftah?error=membership_not_provisioned")
   }
 
   if (identityLink.error === "identity_link_conflict") {
@@ -120,7 +120,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       externalOrgId,
       subject
     })
-    redirect("/?error=identity_link_conflict")
+    redirect("/login/maftah?error=identity_link_conflict")
   }
 
   if (identityLink.membership_status !== "active") {
@@ -133,7 +133,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       externalOrgId,
       subject
     })
-    redirect("/?error=membership_not_active")
+    redirect("/login/maftah?error=membership_not_active")
   }
 
   // Create federation session (Absolute 8-Hour Session - Stage 6B.7)
@@ -157,7 +157,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       externalOrgId,
       subject
     })
-    redirect("/?error=session_creation_failed")
+    redirect("/login/maftah?error=session_creation_failed")
   }
 
   // Store structured encrypted credentials in vault with AAD context

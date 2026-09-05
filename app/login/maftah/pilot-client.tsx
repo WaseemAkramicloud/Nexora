@@ -3,9 +3,13 @@
 import React from "react"
 import { Shield, KeyRound, ArrowRight, ArrowLeft } from "lucide-react"
 import { useTranslation } from "@/lib/i18n/context"
+import { useSearchParams } from "next/navigation"
+import { AlertCircle } from "lucide-react"
 
 export function PilotLoginClient() {
   const { t, locale, setLocale, dir } = useTranslation()
+  const searchParams = useSearchParams()
+  const errorParam = searchParams.get("error")
   const pt = t.pilotLogin || {
     title: "LAM Maftah Pilot Authentication",
     subtitle: "Access your assigned NEXORA workspace using your centralized LAM Maftah identity.",
@@ -45,6 +49,13 @@ export function PilotLoginClient() {
         <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mx-auto">
           <Shield className="w-7 h-7 text-indigo-600" />
         </div>
+
+        {errorParam && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-600 text-xs flex items-center gap-2 text-left">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>Authentication error: <code className="font-mono text-[11px]">{errorParam}</code></span>
+          </div>
+        )}
 
         {/* Stage 6C.1 Pilot Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium">
