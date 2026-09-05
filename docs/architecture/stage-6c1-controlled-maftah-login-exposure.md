@@ -6,9 +6,9 @@ Stage 6C.1 transitions the Maftah → NEXORA federation from engineering topolog
 
 ### Verified Git Commit Traceability:
 - **NEXORA Pre-6C Baseline**: `c043f5b5a69f31ba50600c757cec6f690596077d` (`feat(federation): implement Nexora parallel Maftah OAuth adapter, multi-org identity resolution, AES-GCM vault, and session continuity`)
-- **NEXORA Stage 6C.1 HEAD**: `66977b63c58d4d5fe648c8a6ab67470f4e874454` (Pushed to `origin/main`)
+- **NEXORA Stage 6C.1 HEAD**: `05f72fe907eb6bfecf7773ea455a109968aa23e4` (Pushed to `origin/main`)
 - **LAM Maftah Pre-6C Baseline**: `7aa7226327de867fcc0fd8935fbd60b3888ab180` (`docs(stage-6b): freeze Stage 6B reference architecture baseline`)
-- **LAM Maftah Stage 6C.1 HEAD**: `0db8bef9c96d5fda3cdd388e33c74aa69714e05d` (Pushed to `origin/main`)
+- **LAM Maftah Stage 6C.1 HEAD**: `7a45d1df3684ca347fcdd52efbe3a1e0b57cf681` (Pushed to `origin/main`)
 
 ---
 
@@ -53,7 +53,7 @@ export function getNexoraMaftahExposureMode(): 'hidden' | 'pilot' | 'public' {
   - In `hidden` mode: Server returns `notFound()` (HTTP 404).
   - In `pilot` / `public` mode: Renders dedicated Maftah Pilot Login interface.
 - **Approved Visual Direction**:
-  - Light, restrained, clean, professional, understated style (`bg-slate-50`, clean white card `bg-white border border-slate-200`, `text-slate-900`, `bg-indigo-600` primary button).
+  - Light, restrained, clean, professional, understated style (`bg-slate-50`, clean white card `bg-white border border-slate-200 shadow-sm`, `text-slate-900`, `bg-indigo-600` primary button).
   - Primary CTA: "Continue with LAM Maftah" linking directly to `/api/auth/maftah`.
   - Secondary fallback link: "Return to standard login" linking to `/`.
   - Full multilingual support: English (`en`), French (`fr`), and Arabic (`ar` with `dir="rtl"`).
@@ -64,11 +64,12 @@ export function getNexoraMaftahExposureMode(): 'hidden' | 'pilot' | 'public' {
 
 ### 4.1 Schema Isolation & Security Boundary
 - **Private Schema**: `nexora_internal.auth_operational_events`
+- **Hosted Migration**: `20260905000000_nexora_auth_operational_events.sql` was manually applied through the Supabase Dashboard SQL Editor on 5 September 2026.
 - **RPC**: `public.service_log_auth_operational_event` (SECURITY DEFINER, `SET search_path = ''`, granted exclusively to `service_role`).
-- **PostgREST OpenAPI**: Zero exposure to `PUBLIC`, `anon`, or `authenticated` roles.
+- **PostgREST OpenAPI**: Direct table access strictly revoked from `PUBLIC`, `anon`, `authenticated`, and `service_role`.
 
-### 4.2 Strict Metadata Allowlist (`lib/auth/observability.ts`)
-- Allowed fields: `eventType`, `provider`, `outcome`, `safeErrorCode`, `environment`, `externalOrgId`, `tenantId`, `sessionId`, `subject`, `correlationId`, `metadata: { latency_ms, credential_version, revalidation_type, flow }`.
+### 4.2 Strict Metadata Allowlist (`lib/auth/observability.ts` & DB RPC)
+- Allowed & Reconstructed keys: `latency_ms` (1-9 digits INT), `credential_version` (1-9 digits INT), `revalidation_type` (`'none'|'cached'|'full'`), `flow` (max 64 chars).
 - Prohibited & Discarded: All `tokens`, `secrets`, `passwords`, `cookies`, `code_verifiers`, `nonces`, `ip_address`, and free-form stack traces.
 - Telemetry failures are strictly non-fatal and safely isolated from the authentication execution flow.
 
@@ -77,4 +78,4 @@ export function getNexoraMaftahExposureMode(): 'hidden' | 'pilot' | 'public' {
 ## 5. Hosting & Operational Mechanics
 
 ### Environment Propagation:
-In Vercel hosting, updating `NEXORA_MAFTAH_LOGIN_EXPOSURE` requires a **deployment rollout / redeploy** to propagate the new value across Serverless Function Lambdas. It is not instantaneous without a deployment trigger.
+In Vercel hosting, updating `NEXORA_MAFTAH_LOGIN_EXPOSURE` requires a **deployment rollout / redeploy** to propagate the new value across Serverless Function Lambdas.
