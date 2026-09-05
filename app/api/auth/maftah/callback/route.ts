@@ -122,8 +122,8 @@ export async function GET(req: NextRequest) {
 
   // Case A: Multi-Organization Selection Required
   if (resolveData.status === "organization_selection_required") {
-    const tempTxId = crypto.randomUUID()
-    const encryptedTokens = encryptCredential(tokens, `${tempTxId}:nexora_maftah_login_transaction`)
+    const aad = `${subject}:nexora_maftah_login_transaction`
+    const encryptedTokens = encryptCredential(tokens, aad)
 
     const { data: txId, error: txErr } = await adminDb.rpc("service_create_login_transaction", {
       p_issuer: issuer,
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
         subject,
         correlationId
       })
-      return NextResponse.redirect(new URL("/?error=transaction_creation_failed", baseUrl), 302)
+      return NextResponse.redirect(new URL("/login/maftah?error=transaction_creation_failed", baseUrl), 302)
     }
 
     await logAuthOperationalEvent({
@@ -153,15 +153,20 @@ export async function GET(req: NextRequest) {
       correlationId
     })
 
-    cookieStore.set("nexora_maftah_tx", txId, {
+    const txCookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "lax" as const,
       path: "/",
       maxAge: 10 * 60
-    })
+    }
 
-    return NextResponse.redirect(new URL("/select-workspace", baseUrl), 302)
+    cookieStore.set("nexora_maftah_tx", txId, txCookieOptions)
+
+    const redirectRes = NextResponse.redirect(new URL("/select-workspace", baseUrl), 302)
+    redirectRes.cookies.set("nexora_maftah_tx", txId, txCookieOptions)
+
+    return redirectRes
   }
 
   // Case B: Single Authorized Organization Entry

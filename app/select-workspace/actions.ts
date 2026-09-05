@@ -42,7 +42,8 @@ export async function selectWorkspaceAction(formData: FormData) {
 
   let tokens: any
   try {
-    tokens = decryptCredential(tx.encrypted_credentials, tx.iv, tx.tag, `${transactionId}:nexora_maftah_login_transaction`)
+    const aad = `${tx.subject}:nexora_maftah_login_transaction`
+    tokens = decryptCredential(tx.encrypted_credentials, tx.iv, tx.tag, aad)
   } catch {
     await logAuthOperationalEvent({
       eventType: "maftah_callback_failed",
@@ -51,7 +52,7 @@ export async function selectWorkspaceAction(formData: FormData) {
       safeErrorCode: "credential_decryption_failed",
       subject: tx.subject
     })
-    redirect("/?error=credential_decryption_failed")
+    redirect("/login/maftah?error=credential_decryption_failed")
   }
 
   // Authoritatively re-verify entry resolution with requested_org_id

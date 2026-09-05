@@ -17,7 +17,7 @@ export default async function SelectWorkspacePage() {
   const txId = cookieStore.get('nexora_maftah_tx')?.value
 
   if (!txId) {
-    redirect('/login?error=no_active_login_transaction')
+    redirect('/login/maftah?error=no_active_login_transaction')
   }
 
   const adminDb = getSupabaseAdmin()
@@ -26,21 +26,26 @@ export default async function SelectWorkspacePage() {
   })
 
   if (error || !tx || tx.status !== 'pending') {
-    redirect('/login?error=transaction_expired')
+    redirect('/login/maftah?error=transaction_expired')
   }
 
   let accessToken: string
   try {
-    const raw = decryptCredential(tx.encrypted_credentials, tx.iv, tx.tag)
-    const tokens = JSON.parse(raw)
+    const aad = `${tx.subject}:nexora_maftah_login_transaction`
+    const tokens = decryptCredential<{ access_token: string }>(
+      tx.encrypted_credentials,
+      tx.iv,
+      tx.tag,
+      aad
+    )
     accessToken = tokens.access_token
   } catch {
-    redirect('/login?error=credential_decryption_failed')
+    redirect('/login/maftah?error=credential_decryption_failed')
   }
 
   const resolveRes = await callMaftahResolveEntry(accessToken)
   if (!resolveRes.success || !resolveRes.data?.eligible_organizations) {
-    redirect('/login?error=failed_to_load_organizations')
+    redirect('/login/maftah?error=failed_to_load_organizations')
   }
 
   const orgs = resolveRes.data.eligible_organizations
@@ -83,7 +88,7 @@ export default async function SelectWorkspacePage() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-slate-700 text-center">
-          <a href="/login" className="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+          <a href="/login/maftah" className="text-xs text-slate-400 hover:text-slate-200 transition-colors">
             ← Cancel and return to sign in
           </a>
         </div>
