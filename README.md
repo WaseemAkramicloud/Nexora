@@ -116,3 +116,16 @@ ALLOW_PRODUCTION_E2E=true E2E_SIMULATE_FAILURE_STEP=7 node scripts/live-e2e-suit
 > **BROWSER VERIFICATION REQUIREMENT (SAFARI ONLY)**:
 > All manual or browser-based user verification (SSO login, PKCE flow, session cookies) must be performed strictly using **Safari on macOS**. Google Chrome / Chromium must not be used.
 
+
+---
+
+## 8. Stage 6C.1 — Controlled Maftah Login Exposure & Operational Observability
+
+NEXORA implements a three-state server-side exposure model for Maftah login rollout:
+- **Environment Variable**: `NEXORA_MAFTAH_LOGIN_EXPOSURE` (`hidden` | `pilot` | `public`)
+- **Default (Fail-Closed)**: Any missing, empty, or invalid value strictly resolves to `hidden`.
+- **Active Production Target**: `pilot` (`NEXORA_MAFTAH_LOGIN_EXPOSURE=pilot`).
+- **Normal Login Entrypoint (`/`)**: Remains 100% legacy SSO default without Maftah buttons.
+- **Pilot Entrypoint**: `/login/maftah` provides dedicated, localized (EN/FR/AR RTL) pilot login for controlled validation.
+- **Operational Observability**: Telemetry events logged via private table `nexora_internal.auth_operational_events` and SECURITY DEFINER RPC `public.service_log_auth_operational_event` with strict metadata allowlists and zero credential logging.
+- **Architecture Specification**: [`docs/architecture/stage-6c1-controlled-maftah-login-exposure.md`](docs/architecture/stage-6c1-controlled-maftah-login-exposure.md)

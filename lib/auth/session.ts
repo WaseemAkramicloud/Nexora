@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { verifyNexoraSessionToken, signNexoraSessionToken } from './jwt'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { logAuthOperationalEvent } from '@/lib/auth/observability'
 import {
   revalidateMaftahFederationSession,
   MAFTAH_REVALIDATION_INTERVAL_SECONDS,

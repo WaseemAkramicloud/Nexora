@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const FEDERATION_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60 // 8 hours absolute
 export const MAFTAH_REVALIDATION_INTERVAL_SECONDS = 30 * 60 // 30 minutes

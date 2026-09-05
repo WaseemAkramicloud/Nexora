@@ -107,3 +107,34 @@ export function getLamJwksEndpoint(): string {
   }
   return `${getLamIssuer()}/.well-known/jwks.json`
 }
+
+export type MaftahExposureMode = "hidden" | "pilot" | "public"
+
+/**
+ * Authoritative Server-Side Maftah Login Exposure Mode Helper (Stage 6C.1)
+ *
+ * Allowed values:
+ * - "hidden": No Maftah login entry point exposed. Initiation routes (/login/maftah, /api/auth/maftah) return 404.
+ * - "pilot": Dedicated /login/maftah route is available by direct URL. Normal login remains legacy SSO default.
+ * - "public": (Stage 6C.2 preparation) Recognized by config helper.
+ *
+ * Fail-closed behavior: Any missing, empty, or invalid value strictly defaults to "hidden".
+ */
+export function getNexoraMaftahExposureMode(): MaftahExposureMode {
+  const envVal = process.env.NEXORA_MAFTAH_LOGIN_EXPOSURE?.trim().toLowerCase()
+
+  if (envVal === "pilot") {
+    return "pilot"
+  }
+
+  if (envVal === "public") {
+    return "public"
+  }
+
+  if (envVal === "hidden") {
+    return "hidden"
+  }
+
+  // Fail-closed default for any invalid or missing configuration
+  return "hidden"
+}

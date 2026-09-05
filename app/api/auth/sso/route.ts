@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateNonce } from '@/lib/auth/pkce'
 
 import { getLamAuthorizeEndpoint, getLamClientId, getNexoraCallbackUrl } from '@/lib/auth/config'
+import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,12 @@ export async function GET(request: NextRequest) {
   const challenge = generateCodeChallenge(verifier)
   const stateRaw = generateState()
   const nonce = generateNonce()
+
+  await logAuthOperationalEvent({
+    eventType: 'legacy_login_started',
+    provider: 'legacy_sso',
+    outcome: 'pending'
+  })
 
   // Diagnostic trace (Redacted)
   console.log('[OIDC SSO INIT TRACE]', {

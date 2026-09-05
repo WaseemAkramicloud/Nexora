@@ -4,6 +4,7 @@ import { setSessionCookie } from '@/lib/auth/session'
 import { getOrCreateTenantForCompany, getOrCreateMembership } from '@/lib/db/nexora-service'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getLamTokenEndpoint, getLamClientId, getLamClientSecret, getNexoraCallbackUrl } from '@/lib/auth/config'
+import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const dynamic = 'force-dynamic'
 
@@ -222,6 +223,12 @@ export async function GET(request: NextRequest) {
       createdAt: new Date().toISOString()
     }
 
+    await logAuthOperationalEvent({
+      eventType: "legacy_login_success",
+      provider: "legacy_sso",
+      outcome: "success",
+      tenantId: tenant.id
+    })
     const response = NextResponse.redirect(new URL(returnUrl, request.url))
     
     // Set NEXORA session cookie
