@@ -106,6 +106,16 @@ export async function GET(req: NextRequest) {
   // 3. Authoritative Federation Entry Resolution
   const resolveResult = await callMaftahResolveEntry(tokens.access_token)
   if (!resolveResult.success || !resolveResult.data) {
+    console.log(
+      '[NEXORA_MAFTAH_DIAG callback_branch resolve_call_failed]',
+      JSON.stringify({
+        failureKind: resolveResult.failureKind || 'HTTP_NON_200',
+        httpStatus: resolveResult.httpStatus ?? resolveResult.status ?? null,
+        bodyStatus: resolveResult.safeUpstreamStatus ?? null,
+        bodyError: resolveResult.safeUpstreamError ?? null
+      })
+    )
+
     await logAuthOperationalEvent({
       eventType: "maftah_callback_failed",
       provider: "maftah",
@@ -122,6 +132,7 @@ export async function GET(req: NextRequest) {
 
   // Case A: Multi-Organization Selection Required
   if (resolveData.status === "organization_selection_required") {
+    console.log('[NEXORA_MAFTAH_DIAG callback_branch organization_selection_required]')
     const aad = `${subject}:nexora_maftah_login_transaction`
     const encryptedTokens = encryptCredential(tokens, aad)
 
@@ -171,6 +182,7 @@ export async function GET(req: NextRequest) {
 
   // Case B: Single Authorized Organization Entry
   if (resolveData.status === "authorized" && resolveData.organization) {
+    console.log('[NEXORA_MAFTAH_DIAG callback_branch authorized]')
     const externalOrgId = resolveData.organization.id
 
     // 4. Resolve local workspace mapping
@@ -318,6 +330,15 @@ export async function GET(req: NextRequest) {
   }
 
   // Denied / fail-closed default
+  console.log(
+    '[NEXORA_MAFTAH_DIAG callback_branch unexpected_resolver_status]',
+    JSON.stringify({
+      httpStatus: resolveResult.httpStatus ?? resolveResult.status ?? null,
+      bodyStatus: resolveResult.safeUpstreamStatus ?? null,
+      eligibleOrganizationCount: resolveResult.eligibleOrganizationCount ?? null
+    })
+  )
+
   await logAuthOperationalEvent({
     eventType: "maftah_callback_failed",
     provider: "maftah",

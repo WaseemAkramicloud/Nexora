@@ -630,10 +630,70 @@ export async function refreshFederationCredentials(
 // Live Maftah Authorization Revalidation
 // -----------------------------------------------------------------------------
 
+export type ResolverFailureKind =
+  | 'SUCCESS'
+  | 'HTTP_NON_200'
+  | 'NETWORK_ERROR'
+  | 'JSON_PARSE_ERROR'
+  | 'INVALID_RESPONSE_SHAPE'
+
+export const SAFE_RESOLVER_BODY_STATUS_ALLOWLIST = new Set([
+  'organization_selection_required',
+  'authorized',
+  'unauthorized',
+  'denied',
+  'bad_request',
+  'error'
+])
+
+export const SAFE_RESOLVER_BODY_ERROR_ALLOWLIST = new Set([
+  'oauth_session_invalid',
+  'no_effective_access',
+  'invalid_token',
+  'missing_token',
+  'expired_token',
+  'invalid_requested_org_id',
+  'invalid_request_body',
+  'internal_error'
+])
+
+export function sanitizeSafeBodyStatus(val: unknown): string | null {
+  if (typeof val !== 'string') return null
+  const trimmed = val.trim()
+  return SAFE_RESOLVER_BODY_STATUS_ALLOWLIST.has(trimmed) ? trimmed : 'UNEXPECTED_VALUE'
+}
+
+export function sanitizeSafeBodyError(val: unknown): string | null {
+  if (typeof val !== 'string') return null
+  const trimmed = val.trim()
+  return SAFE_RESOLVER_BODY_ERROR_ALLOWLIST.has(trimmed) ? trimmed : 'UNEXPECTED_VALUE'
+}
+
+export interface CallMaftahResolveEntryResult {
+  success: boolean
+  data?: MaftahResolveEntryResponse
+  error?: string
+  status?: number
+  httpStatus: number | null
+  failureKind: ResolverFailureKind
+  safeUpstreamStatus: string | null
+  safeUpstreamError: string | null
+  eligibleOrganizationCount: number | null
+}
+
 export async function callMaftahResolveEntry(
   accessToken: string,
   requestedOrgId?: string
-): Promise<{ success: boolean; data?: MaftahResolveEntryResponse; error?: string; status?: number }> {
+): Promise<CallMaftahResolveEntryResult> {
+  let httpStatus: number | null = null
+  let responseOk: boolean | null = null
+  let jsonParsed = false
+  let bodyStatus: string | null = null
+  let bodyError: string | null = null
+  let eligibleOrganizationCount: number | null = null
+  let failureKind: ResolverFailureKind = 'NETWORK_ERROR'
+  let parsedData: MaftahResolveEntryResponse | undefined = undefined
+
   try {
     const resolveUrl = getMaftahFederationResolveUrl()
     const body: Record<string, unknown> = {}
@@ -641,32 +701,172 @@ export async function callMaftahResolveEntry(
       body.requested_org_id = requestedOrgId
     }
 
-    const res = await fetch(resolveUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      body: JSON.stringify(body),
-      cache: 'no-store'
-    })
-
-    const json = (await res.json()) as MaftahResolveEntryResponse
-
-    if (res.status === 200) {
-      return { success: true, status: 200, data: json }
+    let res: Response
+    try {
+      res = await fetch(resolveUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify(body),
+        cache: 'no-store'
+      })
+      httpStatus = res.status
+      responseOk = res.ok
+    } catch {
+      failureKind = 'NETWORK_ERROR'
+      console.log(
+        '[NEXORA_MAFTAH_DIAG resolver_result]',
+        JSON.stringify({
+          httpStatus: null,
+          responseOk: null,
+          jsonParsed: false,
+          bodyStatus: null,
+          bodyError: null,
+          eligibleOrganizationCount: null,
+          failureKind: 'NETWORK_ERROR'
+        })
+      )
+      return {
+        success: false,
+        httpStatus: null,
+        status: undefined,
+        failureKind: 'NETWORK_ERROR',
+        safeUpstreamStatus: null,
+        safeUpstreamError: null,
+        eligibleOrganizationCount: null,
+        error: 'resolve_entry_network_error'
+      }
     }
+
+    // Attempt JSON parsing
+    let rawJson: unknown
+    try {
+      rawJson = await res.json()
+      jsonParsed = true
+    } catch {
+      jsonParsed = false
+      failureKind = 'JSON_PARSE_ERROR'
+      console.log(
+        '[NEXORA_MAFTAH_DIAG resolver_result]',
+        JSON.stringify({
+          httpStatus,
+          responseOk,
+          jsonParsed: false,
+          bodyStatus: null,
+          bodyError: null,
+          eligibleOrganizationCount: null,
+          failureKind: 'JSON_PARSE_ERROR'
+        })
+      )
+      return {
+        success: false,
+        httpStatus,
+        status: httpStatus,
+        failureKind: 'JSON_PARSE_ERROR',
+        safeUpstreamStatus: null,
+        safeUpstreamError: null,
+        eligibleOrganizationCount: null,
+        error: `resolve_entry_json_parse_failed_${httpStatus}`
+      }
+    }
+
+    // Extract safe fields from parsed JSON
+    if (rawJson && typeof rawJson === 'object') {
+      const obj = rawJson as Record<string, unknown>
+      bodyStatus = sanitizeSafeBodyStatus(obj.status)
+      bodyError = sanitizeSafeBodyError(obj.error)
+      if (Array.isArray(obj.eligible_organizations)) {
+        eligibleOrganizationCount = obj.eligible_organizations.length
+      }
+    }
+
+    // Validate response shape and status
+    if (res.status === 200) {
+      const json = rawJson as MaftahResolveEntryResponse
+      const isValidShape =
+        Boolean(json && typeof json === 'object') &&
+        ((json.status === 'organization_selection_required' && Array.isArray(json.eligible_organizations)) ||
+         (json.status === 'authorized' && Boolean(json.organization && typeof json.organization.id === 'string')))
+
+      if (isValidShape) {
+        failureKind = 'SUCCESS'
+        parsedData = json
+      } else {
+        failureKind = 'INVALID_RESPONSE_SHAPE'
+      }
+    } else {
+      failureKind = 'HTTP_NON_200'
+    }
+
+    console.log(
+      '[NEXORA_MAFTAH_DIAG resolver_result]',
+      JSON.stringify({
+        httpStatus,
+        responseOk,
+        jsonParsed,
+        bodyStatus,
+        bodyError,
+        eligibleOrganizationCount,
+        failureKind
+      })
+    )
+
+    if (failureKind === 'SUCCESS') {
+      return {
+        success: true,
+        httpStatus: 200,
+        status: 200,
+        data: parsedData,
+        failureKind: 'SUCCESS',
+        safeUpstreamStatus: bodyStatus,
+        safeUpstreamError: bodyError,
+        eligibleOrganizationCount
+      }
+    }
+
+    const errorStr =
+      failureKind === 'INVALID_RESPONSE_SHAPE'
+        ? 'resolve_entry_invalid_shape'
+        : (bodyError || `resolve_entry_failed_${httpStatus}`)
 
     return {
       success: false,
-      status: res.status,
-      error: json.error || `resolve_entry_failed_${res.status}`,
-      data: json
+      httpStatus,
+      status: httpStatus,
+      error: errorStr,
+      data: parsedData || (rawJson as MaftahResolveEntryResponse),
+      failureKind,
+      safeUpstreamStatus: bodyStatus,
+      safeUpstreamError: bodyError,
+      eligibleOrganizationCount
     }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'resolve_entry_exception'
-    return { success: false, error: msg }
+  } catch {
+    failureKind = 'NETWORK_ERROR'
+    console.log(
+      '[NEXORA_MAFTAH_DIAG resolver_result]',
+      JSON.stringify({
+        httpStatus,
+        responseOk,
+        jsonParsed,
+        bodyStatus,
+        bodyError,
+        eligibleOrganizationCount,
+        failureKind: 'NETWORK_ERROR'
+      })
+    )
+    return {
+      success: false,
+      httpStatus,
+      status: httpStatus ?? undefined,
+      failureKind: 'NETWORK_ERROR',
+      safeUpstreamStatus: null,
+      safeUpstreamError: null,
+      eligibleOrganizationCount: null,
+      error: 'resolve_entry_exception'
+    }
   }
 }
 
