@@ -10,6 +10,8 @@ import {
   exchangeMaftahAuthorizationCode,
   verifyMaftahIdToken,
   callMaftahResolveEntry,
+  classifyResolverHttpResult,
+  classifyResolverPayload,
   encryptCredential,
   FEDERATION_SESSION_MAX_AGE_SECONDS
 } from "@/lib/auth/maftah-oauth"
@@ -58,6 +60,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login/maftah?error=invalid_oauth_state", baseUrl), 302)
   }
 
+  // Stage 2: Callback entered
+  await logAuthOperationalEvent({
+    eventType: "maftah_callback_received",
+    provider: "maftah",
+    outcome: "success",
+    correlationId
+  })
+
   // 1. Exchange authorization code for tokens
   const exchangeResult = await exchangeMaftahAuthorizationCode(code, codeVerifier)
   if (!exchangeResult.success || !exchangeResult.tokens) {
@@ -70,6 +80,14 @@ export async function GET(req: NextRequest) {
     })
     return NextResponse.redirect(new URL("/login/maftah?error=token_exchange_failed", baseUrl), 302)
   }
+
+  // Stage 3: Token exchange successful
+  await logAuthOperationalEvent({
+    eventType: "maftah_token_exchange_success",
+    provider: "maftah",
+    outcome: "success",
+    correlationId
+  })
 
   const tokens = exchangeResult.tokens
 
@@ -100,11 +118,51 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login/maftah?error=invalid_id_token", baseUrl), 302)
   }
 
+  // Stage 4: ID token verified
+  await logAuthOperationalEvent({
+    eventType: "maftah_id_token_verified",
+    provider: "maftah",
+    outcome: "success",
+    correlationId
+  })
+
   const issuer = getMaftahOAuthIssuer()
   const subject = idTokenResult.payload.sub
 
+  // Stage 5: Resolver call started
+  await logAuthOperationalEvent({
+    eventType: "maftah_resolver_call_started",
+    provider: "maftah",
+    outcome: "pending",
+    correlationId
+  })
+
   // 3. Authoritative Federation Entry Resolution
   const resolveResult = await callMaftahResolveEntry(tokens.access_token)
+
+  // Stage 6: Resolver HTTP/result classification
+  const httpClassification = classifyResolverHttpResult(resolveResult)
+  await logAuthOperationalEvent({
+    eventType: "maftah_resolver_http_result",
+    provider: "maftah",
+    outcome: httpClassification.outcome,
+    safeErrorCode: httpClassification.safeErrorCode,
+    correlationId
+  })
+
+  // Stage 7: Resolver payload classification, only when safe JSON was parsed
+  let payloadClassification: ReturnType<typeof classifyResolverPayload> | null = null
+  if (resolveResult.jsonParsed) {
+    payloadClassification = classifyResolverPayload(resolveResult)
+    await logAuthOperationalEvent({
+      eventType: "maftah_resolver_payload_classified",
+      provider: "maftah",
+      outcome: payloadClassification.outcome,
+      safeErrorCode: payloadClassification.safeErrorCode,
+      correlationId
+    })
+  }
+
   if (!resolveResult.success || !resolveResult.data) {
     console.log(
       '[NEXORA_MAFTAH_DIAG callback_branch resolve_call_failed]',
@@ -116,12 +174,20 @@ export async function GET(req: NextRequest) {
       })
     )
 
+    // Stage 8: Resolver failure branch entered
+    await logAuthOperationalEvent({
+      eventType: "maftah_resolver_failure_branch",
+      provider: "maftah",
+      outcome: "failure",
+      safeErrorCode: payloadClassification?.safeErrorCode || httpClassification.safeErrorCode,
+      correlationId
+    })
+
     await logAuthOperationalEvent({
       eventType: "maftah_callback_failed",
       provider: "maftah",
       outcome: "failure",
       safeErrorCode: "access_not_authorized",
-      subject,
       correlationId
     })
     return NextResponse.redirect(new URL("/login/maftah?error=access_not_authorized", baseUrl), 302)
@@ -133,6 +199,16 @@ export async function GET(req: NextRequest) {
   // Case A: Multi-Organization Selection Required
   if (resolveData.status === "organization_selection_required") {
     console.log('[NEXORA_MAFTAH_DIAG callback_branch organization_selection_required]')
+
+    // Stage 8: Selection required branch entered
+    await logAuthOperationalEvent({
+      eventType: "maftah_selection_required_branch_entered",
+      provider: "maftah",
+      outcome: "info",
+      safeErrorCode: "organization_selection_required",
+      correlationId
+    })
+
     const aad = `${subject}:nexora_maftah_login_transaction`
     const encryptedTokens = encryptCredential(tokens, aad)
 
@@ -183,6 +259,16 @@ export async function GET(req: NextRequest) {
   // Case B: Single Authorized Organization Entry
   if (resolveData.status === "authorized" && resolveData.organization) {
     console.log('[NEXORA_MAFTAH_DIAG callback_branch authorized]')
+
+    // Stage 8: Authorized branch entered
+    await logAuthOperationalEvent({
+      eventType: "maftah_authorized_branch_entered",
+      provider: "maftah",
+      outcome: "success",
+      safeErrorCode: "authorized",
+      correlationId
+    })
+
     const externalOrgId = resolveData.organization.id
 
     // 4. Resolve local workspace mapping
@@ -339,12 +425,20 @@ export async function GET(req: NextRequest) {
     })
   )
 
+  // Stage 8: Unexpected status branch entered
+  await logAuthOperationalEvent({
+    eventType: "maftah_unexpected_status_branch",
+    provider: "maftah",
+    outcome: "failure",
+    safeErrorCode: resolveResult.safeUpstreamStatus || "unexpected_status",
+    correlationId
+  })
+
   await logAuthOperationalEvent({
     eventType: "maftah_callback_failed",
     provider: "maftah",
     outcome: "failure",
     safeErrorCode: "access_not_authorized",
-    subject,
     correlationId
   })
   return NextResponse.redirect(new URL("/login/maftah?error=access_not_authorized", baseUrl), 302)

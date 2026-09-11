@@ -679,6 +679,90 @@ export interface CallMaftahResolveEntryResult {
   safeUpstreamStatus: string | null
   safeUpstreamError: string | null
   eligibleOrganizationCount: number | null
+  jsonParsed: boolean
+}
+
+export type ResolverHttpResultCode =
+  | "resolver_http_200"
+  | "resolver_http_400"
+  | "resolver_http_401"
+  | "resolver_http_403"
+  | "resolver_http_500"
+  | "resolver_http_other"
+  | "resolver_network_error"
+  | "resolver_json_parse_error"
+  | "resolver_invalid_shape"
+
+export function classifyResolverHttpResult(result: CallMaftahResolveEntryResult): {
+  safeErrorCode: ResolverHttpResultCode
+  outcome: "success" | "failure"
+} {
+  if (result.failureKind === "NETWORK_ERROR") {
+    return { safeErrorCode: "resolver_network_error", outcome: "failure" }
+  }
+  if (result.failureKind === "JSON_PARSE_ERROR") {
+    return { safeErrorCode: "resolver_json_parse_error", outcome: "failure" }
+  }
+  if (result.failureKind === "INVALID_RESPONSE_SHAPE") {
+    return { safeErrorCode: "resolver_invalid_shape", outcome: "failure" }
+  }
+  if (result.httpStatus === 200) {
+    return { safeErrorCode: "resolver_http_200", outcome: "success" }
+  }
+  if (result.httpStatus === 400) {
+    return { safeErrorCode: "resolver_http_400", outcome: "failure" }
+  }
+  if (result.httpStatus === 401) {
+    return { safeErrorCode: "resolver_http_401", outcome: "failure" }
+  }
+  if (result.httpStatus === 403) {
+    return { safeErrorCode: "resolver_http_403", outcome: "failure" }
+  }
+  if (result.httpStatus === 500) {
+    return { safeErrorCode: "resolver_http_500", outcome: "failure" }
+  }
+  return { safeErrorCode: "resolver_http_other", outcome: "failure" }
+}
+
+export type ResolverPayloadClassifiedCode =
+  | "organization_selection_required"
+  | "authorized"
+  | "unauthorized"
+  | "oauth_session_invalid"
+  | "denied"
+  | "no_effective_access"
+  | "internal_error"
+  | "unexpected_status"
+
+export function classifyResolverPayload(result: CallMaftahResolveEntryResult): {
+  safeErrorCode: ResolverPayloadClassifiedCode
+  outcome: "success" | "failure" | "info"
+} {
+  const status = result.data?.status || result.safeUpstreamStatus
+  const error = result.safeUpstreamError
+
+  if (status === "organization_selection_required") {
+    return { safeErrorCode: "organization_selection_required", outcome: "info" }
+  }
+  if (status === "authorized") {
+    return { safeErrorCode: "authorized", outcome: "success" }
+  }
+  if (error === "oauth_session_invalid") {
+    return { safeErrorCode: "oauth_session_invalid", outcome: "failure" }
+  }
+  if (status === "denied" || error === "denied") {
+    return { safeErrorCode: "denied", outcome: "failure" }
+  }
+  if (error === "no_effective_access") {
+    return { safeErrorCode: "no_effective_access", outcome: "failure" }
+  }
+  if (status === "unauthorized" || error === "invalid_token" || error === "missing_token" || error === "expired_token") {
+    return { safeErrorCode: "unauthorized", outcome: "failure" }
+  }
+  if (error === "internal_error" || status === "error") {
+    return { safeErrorCode: "internal_error", outcome: "failure" }
+  }
+  return { safeErrorCode: "unexpected_status", outcome: "failure" }
 }
 
 export async function callMaftahResolveEntry(
@@ -737,7 +821,8 @@ export async function callMaftahResolveEntry(
         safeUpstreamStatus: null,
         safeUpstreamError: null,
         eligibleOrganizationCount: null,
-        error: 'resolve_entry_network_error'
+        error: 'resolve_entry_network_error',
+        jsonParsed: false
       }
     }
 
@@ -769,7 +854,8 @@ export async function callMaftahResolveEntry(
         safeUpstreamStatus: null,
         safeUpstreamError: null,
         eligibleOrganizationCount: null,
-        error: `resolve_entry_json_parse_failed_${httpStatus}`
+        error: `resolve_entry_json_parse_failed_${httpStatus}`,
+        jsonParsed: false
       }
     }
 
@@ -823,7 +909,8 @@ export async function callMaftahResolveEntry(
         failureKind: 'SUCCESS',
         safeUpstreamStatus: bodyStatus,
         safeUpstreamError: bodyError,
-        eligibleOrganizationCount
+        eligibleOrganizationCount,
+        jsonParsed: true
       }
     }
 
@@ -841,7 +928,8 @@ export async function callMaftahResolveEntry(
       failureKind,
       safeUpstreamStatus: bodyStatus,
       safeUpstreamError: bodyError,
-      eligibleOrganizationCount
+      eligibleOrganizationCount,
+      jsonParsed: true
     }
   } catch {
     failureKind = 'NETWORK_ERROR'
@@ -865,7 +953,8 @@ export async function callMaftahResolveEntry(
       safeUpstreamStatus: null,
       safeUpstreamError: null,
       eligibleOrganizationCount: null,
-      error: 'resolve_entry_exception'
+      error: 'resolve_entry_exception',
+      jsonParsed: false
     }
   }
 }
