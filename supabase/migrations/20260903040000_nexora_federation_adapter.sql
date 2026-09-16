@@ -135,7 +135,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_match_count INT;
     v_rec RECORD;
@@ -182,7 +182,7 @@ BEGIN
 
     RETURN to_jsonb(v_rec);
 END;
-10925;
+$$;
 
 -- 8.2 Resolve Workspace Link
 CREATE OR REPLACE FUNCTION public.service_resolve_federation_workspace(
@@ -193,7 +193,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_rec RECORD;
 BEGIN
@@ -217,7 +217,7 @@ BEGIN
 
     RETURN to_jsonb(v_rec);
 END;
-10925;
+$$;
 
 -- 8.3 Create Federation Session with Transactional Integrity
 CREATE OR REPLACE FUNCTION public.service_create_federation_session(
@@ -232,7 +232,7 @@ RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_session_id UUID;
     v_is_valid_membership BOOLEAN;
@@ -270,7 +270,7 @@ BEGIN
 
     RETURN v_session_id;
 END;
-10925;
+$$;
 
 -- 8.4 Get Federation Session
 CREATE OR REPLACE FUNCTION public.service_get_federation_session(
@@ -280,7 +280,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_rec RECORD;
 BEGIN
@@ -324,7 +324,7 @@ BEGIN
 
     RETURN to_jsonb(v_rec);
 END;
-10925;
+$$;
 
 -- 8.5 Revoke Federation Session
 CREATE OR REPLACE FUNCTION public.service_revoke_federation_session(
@@ -334,7 +334,7 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 BEGIN
     UPDATE nexora_internal.federation_sessions
     SET status = 'revoked', revoked_at = now(), updated_at = now()
@@ -346,7 +346,7 @@ BEGIN
 
     RETURN FOUND;
 END;
-10925;
+$$;
 
 -- 8.6 Store Federation Credentials (Option A: Structured Payload)
 CREATE OR REPLACE FUNCTION public.service_store_federation_credentials(
@@ -359,7 +359,7 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 BEGIN
     INSERT INTO nexora_internal.federation_session_credentials (
         session_id,
@@ -383,7 +383,7 @@ BEGIN
 
     RETURN TRUE;
 END;
-10925;
+$$;
 
 -- 8.7 Get Federation Credentials
 CREATE OR REPLACE FUNCTION public.service_get_federation_credentials(
@@ -393,7 +393,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_rec RECORD;
 BEGIN
@@ -414,7 +414,7 @@ BEGIN
 
     RETURN to_jsonb(v_rec);
 END;
-10925;
+$$;
 
 -- 8.8 Create Login Transaction
 CREATE OR REPLACE FUNCTION public.service_create_login_transaction(
@@ -428,7 +428,7 @@ RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_tx_id UUID;
 BEGIN
@@ -451,7 +451,7 @@ BEGIN
 
     RETURN v_tx_id;
 END;
-10925;
+$$;
 
 -- 8.9 Get Login Transaction
 CREATE OR REPLACE FUNCTION public.service_get_login_transaction(
@@ -461,7 +461,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_rec RECORD;
 BEGIN
@@ -493,7 +493,7 @@ BEGIN
 
     RETURN to_jsonb(v_rec);
 END;
-10925;
+$$;
 
 -- 8.10 Consume Login Transaction
 CREATE OR REPLACE FUNCTION public.service_consume_login_transaction(
@@ -503,7 +503,7 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 BEGIN
     UPDATE nexora_internal.federation_login_transactions
     SET status = 'consumed', consumed_at = now()
@@ -513,7 +513,7 @@ BEGIN
 
     RETURN FOUND;
 END;
-10925;
+$$;
 
 -- 8.11 Explicit Link Provisioning RPC (for safe provisioning script)
 CREATE OR REPLACE FUNCTION public.service_provision_federation_link(
@@ -527,7 +527,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS 10925
+AS $$
 DECLARE
     v_is_valid_membership BOOLEAN;
     v_ext_id UUID;
@@ -610,7 +610,7 @@ BEGIN
 
     RETURN jsonb_build_object('success', true);
 END;
-10925;
+$$;
 
 -- Revoke function execution from public, anon, and authenticated
 REVOKE ALL ON FUNCTION public.service_get_federation_identity_link(TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
