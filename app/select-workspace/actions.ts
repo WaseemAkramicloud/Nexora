@@ -5,10 +5,13 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin"
 import { setFederationSessionCookie } from "@/lib/auth/session"
 import { logAuthOperationalEvent } from "@/lib/auth/observability"
 import {
+  buildFederationSessionExpiresAt,
+  finalizeFederationSession
+} from "@/lib/auth/federation-session-finalization"
+import {
   decryptCredential,
   encryptCredential,
-  callMaftahResolveEntry,
-  FEDERATION_SESSION_MAX_AGE_SECONDS
+  callMaftahResolveEntry
 } from "@/lib/auth/maftah-oauth"
 
 export async function selectWorkspaceAction(formData: FormData) {
@@ -137,7 +140,7 @@ export async function selectWorkspaceAction(formData: FormData) {
   }
 
   // Create federation session (Absolute 8-Hour Session - Stage 6B.7)
-  const expiresAt = new Date(Date.now() + FEDERATION_SESSION_MAX_AGE_SECONDS * 1000).toISOString()
+  const expiresAt = buildFederationSessionExpiresAt()
   const { data: sessionId, error: sessErr } = await adminDb.rpc("service_create_federation_session", {
     p_membership_id: identityLink.membership_id,
     p_tenant_id: workspaceLink.tenant_id,
@@ -169,20 +172,28 @@ export async function selectWorkspaceAction(formData: FormData) {
     credential_version: 1
   }
 
-  const aad = `${sessionId}:1:nexora_maftah_oauth_credentials`
-  const encryptedVault = encryptCredential(credentialPayload, aad)
-
-  await adminDb.rpc("service_store_federation_credentials", {
-    p_session_id: sessionId,
-    p_encrypted_credentials: encryptedVault.ciphertext,
-    p_iv: encryptedVault.iv,
-    p_tag: encryptedVault.tag
+  const finalization = await finalizeFederationSession(adminDb, {
+    sessionId,
+    encryptedCredentials: () => {
+      const aad = `${sessionId}:1:nexora_maftah_oauth_credentials`
+      return encryptCredential(credentialPayload, aad)
+    },
+    transactionId
   })
 
-  // Consume the login transaction
-  await adminDb.rpc("service_consume_login_transaction", {
-    p_transaction_id: transactionId
-  })
+  if (!finalization.success) {
+    await logAuthOperationalEvent({
+      eventType: "maftah_callback_failed",
+      provider: "maftah",
+      outcome: "failure",
+      safeErrorCode: finalization.error,
+      tenantId: workspaceLink.tenant_id,
+      externalOrgId,
+      sessionId,
+      subject
+    })
+    redirect(`/login/maftah?error=${finalization.error}`)
+  }
 
   // Set session cookie (8 hours absolute) and redirect to dashboard
   setFederationSessionCookie(sessionId)

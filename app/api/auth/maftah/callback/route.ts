@@ -6,14 +6,17 @@ import { setFederationSessionCookie } from "@/lib/auth/session"
 import { getNexoraBaseUrl } from "@/lib/auth/config"
 import { logAuthOperationalEvent } from "@/lib/auth/observability"
 import {
+  buildFederationSessionExpiresAt,
+  finalizeFederationSession
+} from "@/lib/auth/federation-session-finalization"
+import {
   getMaftahOAuthIssuer,
   exchangeMaftahAuthorizationCode,
   verifyMaftahIdToken,
   callMaftahResolveEntry,
   classifyResolverHttpResult,
   classifyResolverPayload,
-  encryptCredential,
-  FEDERATION_SESSION_MAX_AGE_SECONDS
+  encryptCredential
 } from "@/lib/auth/maftah-oauth"
 
 export const dynamic = "force-dynamic"
@@ -340,7 +343,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 6. Create federation session (Absolute 8-Hour Session - Stage 6B.7)
-    const expiresAt = new Date(Date.now() + FEDERATION_SESSION_MAX_AGE_SECONDS * 1000).toISOString()
+    const expiresAt = buildFederationSessionExpiresAt()
     const { data: sessionId, error: sessErr } = await adminDb.rpc("service_create_federation_session", {
       p_membership_id: identityLink.membership_id,
       p_tenant_id: workspaceLink.tenant_id,
@@ -373,15 +376,28 @@ export async function GET(req: NextRequest) {
       credential_version: 1
     }
 
-    const aad = `${sessionId}:1:nexora_maftah_oauth_credentials`
-    const encryptedVault = encryptCredential(credentialPayload, aad)
-
-    await adminDb.rpc("service_store_federation_credentials", {
-      p_session_id: sessionId,
-      p_encrypted_credentials: encryptedVault.ciphertext,
-      p_iv: encryptedVault.iv,
-      p_tag: encryptedVault.tag
+    const finalization = await finalizeFederationSession(adminDb, {
+      sessionId,
+      encryptedCredentials: () => {
+        const aad = `${sessionId}:1:nexora_maftah_oauth_credentials`
+        return encryptCredential(credentialPayload, aad)
+      }
     })
+
+    if (!finalization.success) {
+      await logAuthOperationalEvent({
+        eventType: "maftah_callback_failed",
+        provider: "maftah",
+        outcome: "failure",
+        safeErrorCode: finalization.error,
+        tenantId: workspaceLink.tenant_id,
+        externalOrgId,
+        sessionId,
+        subject,
+        correlationId
+      })
+      return NextResponse.redirect(new URL(`/login/maftah?error=${finalization.error}`, baseUrl), 302)
+    }
 
     // 8. Set version-2 nexora_session cookie (8 hours absolute)
     setFederationSessionCookie(sessionId)

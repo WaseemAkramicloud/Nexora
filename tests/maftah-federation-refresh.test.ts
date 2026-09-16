@@ -13,7 +13,9 @@ import {
   PROACTIVE_TOKEN_REFRESH_THRESHOLD_SECONDS,
   getMaftahOAuthIssuer,
   getMaftahFederationAudience,
-  getMaftahOAuthClientId
+  getMaftahOAuthClientId,
+  MAFTAH_LEGACY_ACCESS_TOKEN_AUDIENCE,
+  MAFTAH_NATIVE_ACCESS_TOKEN_AUDIENCE
 } from '../lib/auth/maftah-oauth'
 import {
   signNexoraSessionToken,
@@ -62,8 +64,8 @@ describe('NEXORA Stage 6B.7 — Refresh Rotation, Live Revalidation & 8-Hour Ses
   // PART A: Refreshed Access Token Claim & Signature Validation
   // ---------------------------------------------------------------------------
   describe('Refreshed Access Token Claim & Signature Validation', () => {
-    it('1. successfully verifies a valid ES256 refreshed access token', async () => {
-      const token = signTestAccessToken()
+    it('1. accepts the native Supabase authenticated audience', async () => {
+      const token = signTestAccessToken({ aud: MAFTAH_NATIVE_ACCESS_TOKEN_AUDIENCE })
       const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
       assert.equal(result.valid, true)
       assert.equal(result.payload?.sub, validSub)
@@ -71,28 +73,35 @@ describe('NEXORA Stage 6B.7 — Refresh Rotation, Live Revalidation & 8-Hour Ses
       assert.equal(result.payload?.session_id, validSessionId)
     })
 
-    it('2. rejects refreshed token with wrong issuer', async () => {
+    it('2. accepts the transitional legacy federation audience', async () => {
+      const token = signTestAccessToken({ aud: MAFTAH_LEGACY_ACCESS_TOKEN_AUDIENCE })
+      const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
+      assert.equal(result.valid, true)
+      assert.equal(result.payload?.aud, MAFTAH_LEGACY_ACCESS_TOKEN_AUDIENCE)
+    })
+
+    it('3. rejects refreshed token with wrong issuer', async () => {
       const token = signTestAccessToken({ iss: 'https://attacker-idp.com/auth/v1' })
       const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
       assert.equal(result.valid, false)
       assert.match(result.error || '', /jwt issuer invalid|token_verification_failed/i)
     })
 
-    it('3. rejects refreshed token with wrong audience', async () => {
+    it('4. rejects refreshed token with an arbitrary audience', async () => {
       const token = signTestAccessToken({ aud: 'https://other-service.com/api' })
       const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
       assert.equal(result.valid, false)
       assert.match(result.error || '', /jwt audience invalid|token_verification_failed/i)
     })
 
-    it('4. rejects refreshed token with client_id mismatch', async () => {
+    it('5. rejects refreshed token with client_id mismatch', async () => {
       const token = signTestAccessToken({ client_id: 'lam_client_other' })
       const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
       assert.equal(result.valid, false)
       assert.equal(result.error, 'client_id_mismatch')
     })
 
-    it('5. rejects refreshed token with subject mismatch', async () => {
+    it('6. rejects refreshed token with subject mismatch', async () => {
       const token = signTestAccessToken({ sub: '99999999-8888-4788-a9aa-bbccddeeff00' })
       const result = await verifyMaftahAccessToken(token, {
         expectedSubject: validSub,
@@ -102,7 +111,7 @@ describe('NEXORA Stage 6B.7 — Refresh Rotation, Live Revalidation & 8-Hour Ses
       assert.equal(result.error, 'subject_mismatch')
     })
 
-    it('6. rejects refreshed token with missing or non-UUID session_id', async () => {
+    it('7. rejects refreshed token with missing or non-UUID session_id', async () => {
       const tokenWithoutSession = signTestAccessToken({ session_id: undefined })
       const res1 = await verifyMaftahAccessToken(tokenWithoutSession, { injectedJwksKeys: mockJwksKeys })
       assert.equal(res1.valid, false)
@@ -114,7 +123,7 @@ describe('NEXORA Stage 6B.7 — Refresh Rotation, Live Revalidation & 8-Hour Ses
       assert.equal(res2.error, 'invalid_session_id_uuid')
     })
 
-    it('7. rejects expired refreshed token', async () => {
+    it('8. rejects expired refreshed token', async () => {
       const token = signTestAccessToken({}, -10) // expired 10s ago
       const result = await verifyMaftahAccessToken(token, { injectedJwksKeys: mockJwksKeys })
       assert.equal(result.valid, false)

@@ -6,6 +6,8 @@ import { logAuthOperationalEvent } from '@/lib/auth/observability'
 export const FEDERATION_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60 // 8 hours absolute
 export const MAFTAH_REVALIDATION_INTERVAL_SECONDS = 30 * 60 // 30 minutes
 export const PROACTIVE_TOKEN_REFRESH_THRESHOLD_SECONDS = 5 * 60 // 5 minutes
+export const MAFTAH_NATIVE_ACCESS_TOKEN_AUDIENCE = 'authenticated'
+export const MAFTAH_LEGACY_ACCESS_TOKEN_AUDIENCE = 'https://maftah.lubbalmandumah.com/api/federation'
 
 export interface MaftahOAuthTokens {
   access_token: string
@@ -67,7 +69,11 @@ export function getMaftahOAuthIssuer(): string {
 }
 
 export function getMaftahFederationAudience(): string {
-  return process.env.MAFTAH_FEDERATION_AUDIENCE || 'https://maftah.lubbalmandumah.com/api/federation'
+  return MAFTAH_NATIVE_ACCESS_TOKEN_AUDIENCE
+}
+
+export function getMaftahFederationAudiences(): [string, string] {
+  return [MAFTAH_NATIVE_ACCESS_TOKEN_AUDIENCE, MAFTAH_LEGACY_ACCESS_TOKEN_AUDIENCE]
 }
 
 export function getMaftahOAuthAuthorizeUrl(): string {
@@ -335,13 +341,13 @@ export async function verifyMaftahAccessToken(
 
     const publicKey = crypto.createPublicKey({ key: jwk as any, format: 'jwk' })
     const expectedIssuer = getMaftahOAuthIssuer()
-    const expectedAudience = getMaftahFederationAudience()
+    const expectedAudiences = getMaftahFederationAudiences()
 
     const payload = jwt.verify(accessToken, publicKey, {
       algorithms: [alg as jwt.Algorithm],
       issuer: expectedIssuer,
-      audience: expectedAudience
-    }) as MaftahAccessTokenPayload
+      audience: expectedAudiences
+    }) as unknown as MaftahAccessTokenPayload
 
     // Validate subject
     if (!payload.sub || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sub)) {
