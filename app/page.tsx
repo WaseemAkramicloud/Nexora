@@ -13,7 +13,6 @@ import {
   Layers,
   Settings,
   Globe,
-  LogOut,
   ShieldCheck,
   Plus,
   Search,
@@ -39,6 +38,7 @@ import { MockApolloDiscoveryAdapter } from '@/lib/adapters/discovery-adapter'
 import { MockHunterEnrichmentAdapter } from '@/lib/adapters/enrichment-adapter'
 import { CampaignBuilderModal } from '@/components/CampaignBuilderModal'
 import { BusinessProfileModal } from '@/components/BusinessProfileModal'
+import { AccountSessionControl } from '@/components/AccountSessionControl'
 
 export default function NexoraApp() {
   const { t, locale, setLocale, dir } = useTranslation()
@@ -405,30 +405,16 @@ export default function NexoraApp() {
             </button>
           </div>
 
-          {/* User Profile Badge */}
+          {/* Account and product-session control */}
           {session && (
-            <div className="flex items-center gap-3 pl-3 border-l border-white/10">
-              <div className="text-right hidden sm:block">
-                <div className="text-xs font-semibold text-white">{session.firstName} {session.lastName}</div>
-                <div className="text-[10px] text-indigo-400 flex items-center justify-end gap-1">
-                  <ShieldCheck className="w-3 h-3" />
-                  {t.userRole[session.role as keyof typeof t.userRole] || session.role}
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-indigo-500/30">
-                {session.firstName?.[0] || 'U'}
-              </div>
-            </div>
+            <AccountSessionControl
+              firstName={session.firstName}
+              lastName={session.lastName}
+              role={session.role}
+              roleLabel={t.userRole[session.role as keyof typeof t.userRole] || session.role}
+              signOutLabel={t.auth.logout}
+            />
           )}
-
-          <a
-            href="/api/auth/sso"
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5"
-            title={t.auth.loginWithLam}
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">LAM SSO</span>
-          </a>
         </div>
       </header>
 
@@ -463,7 +449,7 @@ export default function NexoraApp() {
             <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs">
               <div className="font-semibold text-indigo-300 mb-1 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                LAM ID SSO Active
+                {session?.federationSessionId ? 'Maftah Federation Active' : 'LAM ID SSO Active'}
               </div>
               <p className="text-[11px] text-slate-400 leading-tight">
                 Independent DB: <code className="text-slate-300">zfancncass...</code>
@@ -1540,5 +1526,4 @@ export default function NexoraApp() {
     </div>
   )
 }
-
 

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { verifyNexoraSessionToken, signNexoraSessionToken } from './jwt'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { logAuthOperationalEvent } from '@/lib/auth/observability'
+import { NexoraAuthenticationMode } from './logout'
 import {
   revalidateMaftahFederationSession,
   MAFTAH_REVALIDATION_INTERVAL_SECONDS,
@@ -24,6 +24,51 @@ export interface NexoraUserSession {
   grantedProducts: string[]
   createdAt: string
   federationSessionId?: string
+}
+
+interface SessionCookieStore {
+  get(name: string): { value: string } | undefined
+  set(name: string, value: string, options: {
+    httpOnly: boolean
+    secure: boolean
+    sameSite: 'lax'
+    path: string
+    maxAge: number
+  }): void
+}
+
+interface SessionRevocationClient {
+  rpc(functionName: string, args?: Record<string, unknown>): PromiseLike<{
+    data: unknown
+    error: { message?: string } | null
+  }>
+}
+
+export interface ClearSessionCookieResult {
+  success: boolean
+  authenticationMode: NexoraAuthenticationMode
+  federationSessionId?: string
+  error?: 'federation_session_revocation_failed'
+}
+
+export function isFederationSessionUsable(federationSession: unknown): boolean {
+  if (!federationSession || typeof federationSession !== 'object') return false
+  const session = federationSession as { status?: unknown; membership_status?: unknown }
+  return session.status === 'active' && session.membership_status === 'active'
+}
+
+export async function revokeFederationSessionForLogout(
+  adminDb: SessionRevocationClient,
+  sessionId: string
+): Promise<boolean> {
+  try {
+    const { data, error } = await adminDb.rpc('service_revoke_federation_session', {
+      p_session_id: sessionId
+    })
+    return !error && data === true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -58,12 +103,7 @@ export async function getCurrentSession(options?: {
         p_session_id: payload.sid
       })
 
-      if (error || !fedSession || fedSession.status !== 'active') {
-        return null
-      }
-
-      // Check membership status (independent local product authorization)
-      if (fedSession.membership_status !== 'active') {
+      if (error || !isFederationSessionUsable(fedSession)) {
         return null
       }
 
@@ -159,19 +199,26 @@ export function setFederationSessionCookie(sessionId: string) {
  * Ordinary logout revokes local session and deletes credentials from vault.
  * Does NOT revoke global Maftah OAuth client grant.
  */
-export async function clearSessionCookie() {
-  const cookieStore = cookies()
+export async function clearSessionCookie(options?: {
+  cookieStore?: SessionCookieStore
+  adminDb?: SessionRevocationClient
+}): Promise<ClearSessionCookieResult> {
+  const cookieStore = options?.cookieStore || cookies()
   const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value
+  let authenticationMode: NexoraAuthenticationMode = 'none'
+  let federationSessionId: string | undefined
+  let revocationSucceeded = true
 
   if (sessionToken) {
     const result = verifyNexoraSessionToken(sessionToken)
     if (result.valid && result.payload?.v === 2 && result.payload?.sid) {
-      try {
-        const adminDb = getSupabaseAdmin()
-        await adminDb.rpc('service_revoke_federation_session', {
-          p_session_id: result.payload.sid
-        })
-      } catch {}
+      authenticationMode = 'federation'
+      const sessionId = result.payload.sid as string
+      federationSessionId = sessionId
+      const adminDb = options?.adminDb || getSupabaseAdmin()
+      revocationSucceeded = await revokeFederationSessionForLogout(adminDb, sessionId)
+    } else if (result.valid) {
+      authenticationMode = 'legacy'
     }
   }
 
@@ -190,4 +237,15 @@ export async function clearSessionCookie() {
     path: '/',
     maxAge: 0
   })
+
+  if (!revocationSucceeded) {
+    return {
+      success: false,
+      authenticationMode,
+      federationSessionId,
+      error: 'federation_session_revocation_failed'
+    }
+  }
+
+  return { success: true, authenticationMode, federationSessionId }
 }

@@ -1,29 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clearSessionCookie } from '@/lib/auth/session'
+import { getLogoutDestination } from '@/lib/auth/logout'
+import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
-  await clearSessionCookie()
-  const response = NextResponse.json({ success: true, message: 'Signed out of NEXORA successfully' })
-  response.cookies.set('nexora_session', '', { maxAge: 0, path: '/' })
+function clearResponseCookies(response: NextResponse) {
+  const secure = process.env.NODE_ENV === 'production'
+  const options = { httpOnly: true, secure, sameSite: 'lax' as const, maxAge: 0, path: '/' }
+  response.cookies.set('nexora_session', '', options)
+  response.cookies.set('nexora_maftah_tx', '', options)
+}
+
+async function signOut(request: NextRequest) {
+  const logoutState = await clearSessionCookie()
+  const searchParams = request.nextUrl.searchParams
+  const legacyGlobalLogoutRequested = searchParams.get('global') === 'true' || searchParams.get('lam') === 'true'
+  const legacyGlobalLogoutUrl = process.env.LAM_OIDC_LOGOUT_URL
+    || `${process.env.LAM_PORTAL_URL || 'https://id.lubbalmandumah.com'}/api/sso/logout`
+
+  if (logoutState.authenticationMode === 'federation') {
+    await logAuthOperationalEvent({
+      eventType: 'maftah_logout',
+      provider: 'maftah',
+      outcome: logoutState.success ? 'success' : 'failure',
+      safeErrorCode: logoutState.error || null,
+      sessionId: logoutState.federationSessionId || null
+    })
+  }
+
+  const target = getLogoutDestination({
+    logoutState,
+    legacyGlobalLogoutRequested,
+    legacyGlobalLogoutUrl
+  })
+  const response = NextResponse.redirect(new URL(target, request.url), 303)
+  clearResponseCookies(response)
   return response
 }
 
+export async function POST(request: NextRequest) {
+  return signOut(request)
+}
+
 export async function GET(request: NextRequest) {
-  await clearSessionCookie()
-
-  const searchParams = request.nextUrl.searchParams
-  const isGlobalLogout = searchParams.get('global') === 'true' || searchParams.get('lam') === 'true'
-
-  let targetRedirect = new URL('/', request.url).toString()
-
-  if (isGlobalLogout) {
-    const lamLogoutEndpoint = process.env.LAM_OIDC_LOGOUT_URL || `${process.env.LAM_PORTAL_URL || 'https://id.lubbalmandumah.com'}/api/sso/logout`
-    targetRedirect = lamLogoutEndpoint
-  }
-
-  const response = NextResponse.redirect(targetRedirect)
-  response.cookies.set('nexora_session', '', { maxAge: 0, path: '/' })
-  return response
+  return signOut(request)
 }
