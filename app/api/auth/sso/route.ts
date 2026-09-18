@@ -1,65 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCodeVerifier, generateCodeChallenge, generateState, generateNonce } from '@/lib/auth/pkce'
-
-import { getLamAuthorizeEndpoint, getLamClientId, getNexoraCallbackUrl } from '@/lib/auth/config'
 import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 /**
- * Legacy LAM ID SSO initiation (legacy rollback-only path)
- * Kept for emergency rollback only; no normal customer flow links here.
+ * Legacy LAM ID SSO initiation route (RETIRED - Stage 6C.4).
+ *
+ * Old legacy LAM ID integration has been decommissioned from NEXORA.
+ * Obsolete entrypoints redirect safely to /login/maftah with fail-closed behavior.
  */
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-
   const searchParams = request.nextUrl.searchParams
-  const returnUrl = searchParams.get('returnUrl') || '/'
-
-  // Environment-driven fail-closed LAM OIDC configuration
-  const authorizeEndpoint = getLamAuthorizeEndpoint()
-  const clientId = getLamClientId()
-  const redirectUri = getNexoraCallbackUrl(request.nextUrl.origin)
-
-  // PKCE & OAuth Security State Generation
-  const verifier = generateCodeVerifier()
-  const challenge = generateCodeChallenge(verifier)
-  const stateRaw = generateState()
-  const nonce = generateNonce()
+  const rawReturnUrl = searchParams.get('returnUrl')
+  
+  // Safe returnUrl parsing (only relative paths allowed)
+  let returnUrl: string | undefined
+  if (rawReturnUrl && rawReturnUrl.startsWith('/') && !rawReturnUrl.startsWith('//')) {
+    returnUrl = rawReturnUrl
+  }
 
   await logAuthOperationalEvent({
     eventType: 'legacy_login_started',
     provider: 'legacy_sso',
-    outcome: 'pending'
+    outcome: 'failure',
+    safeErrorCode: 'legacy_sso_retired'
   })
 
-  // Embed returnUrl securely into state payload
-  const statePayload = Buffer.from(JSON.stringify({ state: stateRaw, returnUrl })).toString('base64url')
+  const targetUrl = new URL('/login/maftah', request.url)
+  if (returnUrl && returnUrl !== '/') {
+    targetUrl.searchParams.set('returnUrl', returnUrl)
+  }
 
-  const ssoUrl = new URL(authorizeEndpoint)
-  ssoUrl.searchParams.set('client_id', clientId)
-  ssoUrl.searchParams.set('redirect_uri', redirectUri)
-  ssoUrl.searchParams.set('response_type', 'code')
-  ssoUrl.searchParams.set('scope', 'openid profile email')
-  ssoUrl.searchParams.set('state', statePayload)
-  ssoUrl.searchParams.set('code_challenge', challenge)
-  ssoUrl.searchParams.set('code_challenge_method', 'S256')
-  ssoUrl.searchParams.set('nonce', nonce)
+  const response = NextResponse.redirect(targetUrl, 302)
 
-  const response = NextResponse.redirect(ssoUrl.toString())
-
-  // Cookie attributes: set secure=true ONLY if served over HTTPS to avoid dropping cookies on http://localhost:3001
+  // Clear any residual legacy auth cookies
   const isHttps = request.nextUrl.protocol === 'https:'
   const cookieOptions = {
     httpOnly: true,
     secure: isHttps,
     sameSite: 'lax' as const,
     path: '/',
-    maxAge: 600 // 10 minutes
+    maxAge: 0
   }
 
-  response.cookies.set('nexora_oauth_state', statePayload, cookieOptions)
-  response.cookies.set('nexora_code_verifier', verifier, cookieOptions)
-  response.cookies.set('nexora_nonce', nonce, cookieOptions)
+  response.cookies.set('nexora_oauth_state', '', cookieOptions)
+  response.cookies.set('nexora_code_verifier', '', cookieOptions)
+  response.cookies.set('nexora_nonce', '', cookieOptions)
 
   return response
 }

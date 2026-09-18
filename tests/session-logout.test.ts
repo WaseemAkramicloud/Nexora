@@ -126,15 +126,15 @@ describe('NEXORA Stage 6C.1 product-session logout', () => {
     assert.equal(destination, '/login/maftah?error=session_revocation_failed')
   })
 
-  it('preserves legacy global logout only for an authenticated legacy session', () => {
-    const legacyGlobalLogoutUrl = 'https://id.lubbalmandumah.com/api/sso/logout'
+  it('redirects legacy sessions to /login/maftah after logout without contacting legacy authority', () => {
     const destination = getLogoutDestination({
       logoutState: { success: true, authenticationMode: 'legacy' },
       legacyGlobalLogoutRequested: true,
-      legacyGlobalLogoutUrl
+      legacyGlobalLogoutUrl: 'https://id.lubbalmandumah.com/api/sso/logout'
     })
 
-    assert.equal(destination, legacyGlobalLogoutUrl)
+    assert.equal(destination, '/login/maftah')
+    assert.equal(destination.includes('id.lubbalmandumah.com'), false)
   })
 
   it('the authenticated account control signs out locally and contains no legacy SSO navigation', () => {

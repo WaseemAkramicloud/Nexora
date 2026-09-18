@@ -6,18 +6,14 @@ NEXORA is an enterprise SaaS application designed under the central **LAM Archit
 
 ## 1. Authentication & Identity Architecture
 
-NEXORA uses **LAM Maftah** as its normal user-facing identity and federation authority. Maftah resolves authorized organizations; NEXORA independently maps them to existing local tenants, memberships, and product roles.
+NEXORA uses **LAM Maftah** as its single, authoritative identity and federation provider. Maftah resolves authorized organizations; NEXORA independently maps them to existing local tenants, memberships, and product roles.
 
 * **Protocol**: OAuth 2.0 / OpenID Connect (OIDC) Authorization Code Flow with PKCE (`S256`).
-* **Token Verification**: Maftah OAuth access tokens and NEXORA-specific ID tokens are verified independently against their intended contracts.
+* **Token Verification**: Maftah OAuth access tokens and ID tokens are verified independently via asymmetric ES256 JWKS.
 * **Tenant Isolation**: Authorized Maftah organizations map only to explicitly provisioned NEXORA tenants and memberships.
 * **Product Authorization**: NEXORA local roles remain authoritative inside each selected workspace.
 * **Credentials & Passwords**: NEXORA creates **no local user passwords**. Federation credentials are encrypted server-side and scoped to the local product session.
-
-The legacy LAM ID authentication implementation remains temporarily in source as an unlinked post-cutover rollback fallback. It is not part of the normal user-facing Maftah login flow.
-
-> [!NOTE]
-> **OBSOLETE REQUIREMENT**: Local development no longer requires running LAM ID locally on port `3000`. All environments connect to the live identity authority at `https://id.lubbalmandumah.com`.
+* **Legacy LAM ID Status**: Fully **RETIRED** in Stage 6C.4. Zero operational dependency on `id.lubbalmandumah.com`.
 
 ---
 
@@ -25,19 +21,13 @@ The legacy LAM ID authentication implementation remains temporarily in source as
 
 ### Local Development Environment
 * **NEXORA App URL**: `http://localhost:3001`
-* **NEXORA Callback URL**: `http://localhost:3001/api/auth/callback`
-* **LAM ID Authority**: `https://id.lubbalmandumah.com`
-* **LAM Authorize Endpoint**: `https://id.lubbalmandumah.com/api/sso/authorize`
-* **LAM Token Endpoint**: `https://id.lubbalmandumah.com/api/sso/token`
-* **LAM JWKS Endpoint**: `https://id.lubbalmandumah.com/.well-known/jwks.json`
+* **Maftah Login URL**: `http://localhost:3001/login/maftah`
+* **Maftah OAuth Callback**: `http://localhost:3001/api/auth/maftah/callback`
 
 ### Production Environment
 * **NEXORA App URL**: `https://nexora.lubbalmandumah.com`
-* **NEXORA Callback URL**: `https://nexora.lubbalmandumah.com/api/auth/callback`
-* **LAM ID Authority**: `https://id.lubbalmandumah.com`
-* **LAM Authorize Endpoint**: `https://id.lubbalmandumah.com/api/sso/authorize`
-* **LAM Token Endpoint**: `https://id.lubbalmandumah.com/api/sso/token`
-* **LAM JWKS Endpoint**: `https://id.lubbalmandumah.com/.well-known/jwks.json`
+* **Maftah Login URL**: `https://nexora.lubbalmandumah.com/login/maftah`
+* **Maftah OAuth Callback**: `https://nexora.lubbalmandumah.com/api/auth/maftah/callback`
 
 ---
 
@@ -47,7 +37,7 @@ The legacy LAM ID authentication implementation remains temporarily in source as
 # Start local development server (automatically binds to port 3001)
 npm run dev
 
-# Run full authentication and inter-service security unit test suite
+# Run full authentication and security unit test suite
 npm test
 
 # Build production bundle
@@ -63,65 +53,29 @@ Copy `.env` and configure environment-specific parameters:
 ```env
 # NEXORA Core Configuration
 PROJECT_NAME=NEXORA
-NEXORA_BASE_URL=http://localhost:3001
-NEXORA_CALLBACK_URL=http://localhost:3001/api/auth/callback
+NEXORA_BASE_URL=https://nexora.lubbalmandumah.com
+NEXORA_MAFTAH_LOGIN_EXPOSURE=public
 
-# Live LAM ID OAuth / OIDC Configuration
-LAM_OIDC_ISSUER=https://id.lubbalmandumah.com
-LAM_CLIENT_ID=lam_app_nexora
-LAM_CLIENT_SECRET=lam_secret_nexora_app_key_2026
-LAM_OIDC_AUTHORIZE_URL=https://id.lubbalmandumah.com/api/sso/authorize
-LAM_OIDC_TOKEN_URL=https://id.lubbalmandumah.com/api/sso/token
-LAM_OIDC_USERINFO_URL=https://id.lubbalmandumah.com/api/sso/userinfo
-LAM_OIDC_JWKS_URL=https://id.lubbalmandumah.com/.well-known/jwks.json
-LAM_PORTAL_URL=https://id.lubbalmandumah.com
+# LAM Maftah OAuth 2.0 Federation Configuration
+MAFTAH_OAUTH_CLIENT_ID=your_maftah_client_id
+MAFTAH_OAUTH_CLIENT_SECRET=your_maftah_client_secret
+MAFTAH_OAUTH_ISSUER=https://ujqjtarsdtbnwzqegtzy.supabase.co/auth/v1
+MAFTAH_OAUTH_AUTHORIZE_URL=https://ujqjtarsdtbnwzqegtzy.supabase.co/auth/v1/oauth/authorize
+MAFTAH_OAUTH_TOKEN_URL=https://ujqjtarsdtbnwzqegtzy.supabase.co/auth/v1/oauth/token
+MAFTAH_OAUTH_JWKS_URL=https://ujqjtarsdtbnwzqegtzy.supabase.co/auth/v1/.well-known/jwks.json
+MAFTAH_API_URL=https://maftah.lubbalmandumah.com
+
+# Server Credential Vault Key (32-byte hex)
+NEXORA_CREDENTIAL_VAULT_KEY=your_32_byte_hex_key
 
 # Inter-Service & Session Secrets
 LAM_INTER_SERVICE_SECRET=lam_inter_service_secret_key_2026
 NEXORA_SESSION_SECRET=nexora_local_session_signing_secret_2026
-ENABLE_DEV_AUTH=false
 ```
 
-For production deployment on Vercel, set `NEXORA_BASE_URL=https://nexora.lubbalmandumah.com` and `NEXORA_CALLBACK_URL=https://nexora.lubbalmandumah.com/api/auth/callback`.
-
 ---
 
-## 5. LAM ID Application Registration & Callback Whitelist
-
-To maintain strict service isolation, NEXORA does not directly modify the central LAM ID database.
-
-The central LAM ID application registry (`sso_applications` record for `client_id: lam_app_nexora`) must be configured in the central LAM ID service to whitelist both callback URLs:
-
-1. Development Callback: `http://localhost:3001/api/auth/callback`
-2. Production Callback: `https://nexora.lubbalmandumah.com/api/auth/callback`
-
-> [!WARNING]
-> Do NOT use wildcard callback URLs (`http://localhost:*` or `https://*.lubbalmandumah.com`). Each redirect URI must be explicitly listed in the whitelist.
-
----
-
----
-
-## 7. E2E Testing & Guaranteed Teardown
-
-For full details on live integration testing between LAM ID and NEXORA, see [E2E Architecture & Teardown Documentation](file:///Users/waseemakram/My%20Comp%20Data/My%20ERPs/Nexora/docs/E2E_TESTING.md).
-
-```bash
-# Run live E2E test suite (requires explicit production acknowledgement if targeting live DBs)
-ALLOW_PRODUCTION_E2E=true node scripts/live-e2e-suite.js
-
-# Test controlled failure teardown behavior
-ALLOW_PRODUCTION_E2E=true E2E_SIMULATE_FAILURE_STEP=7 node scripts/live-e2e-suite.js
-```
-
-> [!CAUTION]
-> **BROWSER VERIFICATION REQUIREMENT (SAFARI ONLY)**:
-> All manual or browser-based user verification (SSO login, PKCE flow, session cookies) must be performed strictly using **Safari on macOS**. Google Chrome / Chromium must not be used.
-
-
----
-
-## 8. Stage 6C.1 — Complete
+## 5. Stage 6C.1 — Complete
 
 Stage 6C.1 has been completed and human-verified in production.
 - **Production Proof**: Multi-organization selection, two mapped NEXORA workspaces, distinct local roles, session creation, refresh engine, and NEXORA-local sign-out verified in production on 17 September 2026.
@@ -130,7 +84,7 @@ Stage 6C.1 has been completed and human-verified in production.
 
 ---
 
-## 9. Stage 6C.2 — Complete
+## 6. Stage 6C.2 — Complete
 
 Stage 6C.2 has been completed:
 - **Public Rollout**: Maftah is the visible normal authentication path.
@@ -141,14 +95,20 @@ Stage 6C.2 has been completed:
 
 ---
 
-## 10. Stage 6C.3 — Maftah Default & Legacy Fallback Hardening
+## 7. Stage 6C.3 — Complete
 
-Stage 6C.3 establishes Maftah as NEXORA's definitive default authentication path and isolates legacy LAM ID:
+Stage 6C.3 establishes Maftah as NEXORA's definitive default authentication path:
 - **Maftah Default**: All normal authentication entrypoints (`/`, `/login/maftah`, `/auth/unauthorized`, session recovery, logout) use Maftah by default.
-- **Legacy Fallback Isolation**: Legacy LAM ID endpoints (`/api/auth/sso`, `/api/auth/callback`, legacy logout branches) are isolated and marked strictly as rollback-only infrastructure. Old LAM ID is not retired yet.
-- **Account Menu Polish**: Authenticated header displays user display name, local product role, current workspace badge, Switch workspace action, and Sign out.
 - **Fail-Closed Session Recovery**: Expired sessions, revoked memberships, and failed revalidations fail closed cleanly to `/login/maftah` with localized user guidance.
-- **Status**: Stage 6C.3 is IMPLEMENTED. Stage 6C.4 has not started.
+- **Status**: COMPLETE.
 - **Architecture Specification**: [`docs/architecture/stage-6c3-maftah-default-and-legacy-hardening.md`](docs/architecture/stage-6c3-maftah-default-and-legacy-hardening.md)
 
+---
 
+## 8. Stage 6C.4 — Complete
+
+Stage 6C.4 completes the retirement of the legacy LAM ID integration from NEXORA:
+- **Legacy LAM ID Retired**: Legacy SSO initiation (`/api/auth/sso`), legacy callback (`/api/auth/callback`), legacy RS256 JWKS/token validation, and legacy global logout logic have been decommissioned.
+- **Single Identity Architecture**: NEXORA exclusively integrates with LAM Maftah. Zero operational dependency on `id.lubbalmandumah.com`.
+- **Status**: COMPLETE.
+- **Architecture Specification**: [`docs/architecture/stage-6c4-legacy-lam-id-retirement.md`](docs/architecture/stage-6c4-legacy-lam-id-retirement.md)

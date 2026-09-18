@@ -7,8 +7,8 @@ export interface LogoutState {
 
 export function getLogoutDestination(input: {
   logoutState: LogoutState
-  legacyGlobalLogoutRequested: boolean
-  legacyGlobalLogoutUrl: string
+  legacyGlobalLogoutRequested?: boolean
+  legacyGlobalLogoutUrl?: string
 }): string {
   const { logoutState } = input
 
@@ -18,10 +18,6 @@ export function getLogoutDestination(input: {
       : '/login/maftah?error=session_revocation_failed'
   }
 
-  // Legacy rollback-only path
-  if (logoutState.authenticationMode === 'legacy') {
-    return input.legacyGlobalLogoutRequested ? input.legacyGlobalLogoutUrl : '/'
-  }
-
+  // All authentication modes redirect to Maftah login after logout
   return '/login/maftah'
 }

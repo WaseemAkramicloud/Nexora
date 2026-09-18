@@ -75,14 +75,14 @@ describe('NEXORA Stage 6C.3 — Maftah Default & Legacy Fallback Hardening', () 
   })
 
   describe('2. Legacy Rollback Isolation', () => {
-    it('legacy routes are explicitly tagged as rollback-only paths', () => {
+    it('legacy routes are explicitly tagged as rollback-only or retired paths', () => {
       const legacySso = read('app/api/auth/sso/route.ts')
       const legacyCallback = read('app/api/auth/callback/route.ts')
       const logoutHelper = read('lib/auth/logout.ts')
 
-      assert.match(legacySso, /legacy rollback-only path/i)
-      assert.match(legacyCallback, /legacy rollback-only path/i)
-      assert.match(logoutHelper, /legacy rollback-only path/i)
+      assert.match(legacySso, /legacy.*(?:rollback-only|retired)/i)
+      assert.match(legacyCallback, /legacy.*(?:rollback-only|retired)/i)
+      assert.match(logoutHelper, /(?:legacy rollback-only|authentication modes redirect to maftah)/i)
     })
 
     it('normal Maftah logout never sends users to legacy LAM ID', () => {

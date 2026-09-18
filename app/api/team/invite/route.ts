@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getCurrentSession } from '@/lib/auth/session'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { getMaftahOAuthIssuer } from '@/lib/auth/maftah-oauth'
 import { getInterServiceSecret } from '@/lib/auth/inter-service'
 
 export const dynamic = 'force-dynamic'
@@ -54,8 +55,8 @@ export async function POST(request: NextRequest) {
 
     if (invErr) throw invErr
 
-    // 3. Send Inter-Service Signed Invitation Request to LAM ID
-    const lamIssuer = process.env.LAM_OIDC_ISSUER || 'https://id.lubbalmandumah.com'
+    // 3. Send Inter-Service Signed Invitation Request to Central Authority
+    const lamIssuer = getMaftahOAuthIssuer()
     const lamInvitationEndpoint = `${lamIssuer}/api/inter-service/invitations`
     const secret = getInterServiceSecret()
 

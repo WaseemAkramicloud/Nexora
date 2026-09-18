@@ -14,10 +14,6 @@ function clearResponseCookies(response: NextResponse) {
 
 async function signOut(request: NextRequest) {
   const logoutState = await clearSessionCookie()
-  const searchParams = request.nextUrl.searchParams
-  const legacyGlobalLogoutRequested = searchParams.get('global') === 'true' || searchParams.get('lam') === 'true'
-  const legacyGlobalLogoutUrl = process.env.LAM_OIDC_LOGOUT_URL
-    || `${process.env.LAM_PORTAL_URL || 'https://id.lubbalmandumah.com'}/api/sso/logout`
 
   if (logoutState.authenticationMode === 'federation') {
     await logAuthOperationalEvent({
@@ -29,11 +25,7 @@ async function signOut(request: NextRequest) {
     })
   }
 
-  const target = getLogoutDestination({
-    logoutState,
-    legacyGlobalLogoutRequested,
-    legacyGlobalLogoutUrl
-  })
+  const target = getLogoutDestination({ logoutState })
   const response = NextResponse.redirect(new URL(target, request.url), 303)
   clearResponseCookies(response)
   return response

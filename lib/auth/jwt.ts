@@ -1,8 +1,4 @@
 import jwt from 'jsonwebtoken'
-import { verifyLamOidcToken, LamTokenPayload } from './jwks'
-
-export type { LamTokenPayload } from './jwks'
-export { verifyLamOidcToken } from './jwks'
 
 export interface NexoraLegacySessionPayload {
   v?: 1
