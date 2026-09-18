@@ -8,11 +8,6 @@ import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const dynamic = 'force-dynamic'
 
-function redact(val: string): string {
-  if (!val || val.length < 8) return '***'
-  return `${val.slice(0, 4)}...${val.slice(-4)}`
-}
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -31,14 +26,6 @@ export async function GET(request: NextRequest) {
     const storedState = request.cookies.get('nexora_oauth_state')?.value
     const codeVerifier = request.cookies.get('nexora_code_verifier')?.value
     const storedNonce = request.cookies.get('nexora_nonce')?.value
-
-    console.log('[OIDC CALLBACK TRACE]', {
-      hasStateQuery: Boolean(stateQuery),
-      hasStoredState: Boolean(storedState),
-      hasCodeVerifier: Boolean(codeVerifier),
-      hasStoredNonce: Boolean(storedNonce),
-      storedNonceRedacted: redact(storedNonce || '')
-    })
 
     // 1. Strict OAuth 2.0 State Validation (Anti-CSRF)
     if (!stateQuery || !storedState || stateQuery !== storedState) {
@@ -126,12 +113,6 @@ export async function GET(request: NextRequest) {
     // 3. Validate RS256 Token Signature via LAM JWKS
     const verifyRes = await verifyLamOidcToken(rawToken, {
       expectedNonce: storedNonce
-    })
-
-    console.log('[OIDC TOKEN VERIFICATION TRACE]', {
-      valid: verifyRes.valid,
-      error: verifyRes.error,
-      returnedTokenNonceRedacted: redact(verifyRes.payload?.nonce || '')
     })
 
     if (!verifyRes.valid || !verifyRes.payload) {
@@ -237,10 +218,15 @@ export async function GET(request: NextRequest) {
     clearAuthCookies(response)
 
     return response
-  } catch (err: any) {
-    console.error('SSO Callback error:', err)
+  } catch {
+    await logAuthOperationalEvent({
+      eventType: 'legacy_login_failed',
+      provider: 'legacy_sso',
+      outcome: 'failure',
+      safeErrorCode: 'legacy_callback_failed'
+    })
     const response = NextResponse.redirect(
-      new URL(`/auth/unauthorized?reason=${encodeURIComponent(err.message || 'SSO Authentication failed')}&type=security`, request.url)
+      new URL('/auth/unauthorized?reason=SSO+Authentication+failed&type=security', request.url)
     )
     clearAuthCookies(response)
     return response

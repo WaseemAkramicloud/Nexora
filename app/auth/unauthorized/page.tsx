@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { ShieldAlert, ArrowLeft, KeyRound, ExternalLink, Lock } from 'lucide-react'
+import { ShieldAlert, KeyRound, ExternalLink, Lock } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n/context'
 
 export default function UnauthorizedPage({
@@ -47,7 +47,7 @@ export default function UnauthorizedPage({
           </div>
           <div className="flex items-center justify-between">
             <span>Authentication Engine</span>
-            <span>LAM ID / OIDC SSO</span>
+            <span>LAM Maftah</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Verification Status</span>
@@ -61,11 +61,11 @@ export default function UnauthorizedPage({
 
         <div className="space-y-3">
           <a
-            href="/api/auth/sso"
+            href="/login/maftah"
             className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-600/25 text-sm"
           >
             <KeyRound className="w-4 h-4" />
-            {t.auth.loginWithLam}
+            {t.pilotLogin.continueBtn}
           </a>
 
           <a

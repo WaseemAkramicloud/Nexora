@@ -319,42 +319,44 @@ export default function NexoraApp() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white">LAM ID SSO Authentication Required</h2>
+            <h2 className="text-xl font-bold text-white">LAM Maftah Authentication Required</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              NEXORA is protected by LAM ID SSO. Please authenticate with your LAM ID company workspace identity to access your workspace.
+              Sign in with your LAM Maftah identity to access your assigned NEXORA workspace.
             </p>
           </div>
 
           <div className="space-y-3 pt-2">
             <a
-              href="/api/auth/sso"
+              href="/login/maftah"
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20 block"
             >
-              Authenticate with LAM ID SSO
+              {t.pilotLogin.continueBtn}
             </a>
 
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/auth/dev-login', { method: 'POST' })
-                  if (res.ok) {
-                    window.location.reload()
-                  } else {
-                    const data = await res.json()
-                    alert(data.error || 'Dev login unavailable in production')
+            {process.env.NODE_ENV !== 'production' && (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/auth/dev-login', { method: 'POST' })
+                    if (res.ok) {
+                      window.location.reload()
+                    } else {
+                      const data = await res.json()
+                      alert(data.error || 'Dev login unavailable')
+                    }
+                  } catch (e: any) {
+                    alert(e.message || 'Dev login failed')
                   }
-                } catch (e: any) {
-                  alert(e.message || 'Dev login failed')
-                }
-              }}
-              className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium rounded-xl border border-white/10 transition-all block"
-            >
-              Development Testing Session (Dev Only)
-            </button>
+                }}
+                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium rounded-xl border border-white/10 transition-all block"
+              >
+                Development session
+              </button>
+            )}
           </div>
 
           <div className="text-[10px] text-slate-500 border-t border-white/5 pt-4">
-            Independent DB Instance: <code className="text-indigo-400">zfancncassjmghxzogbm</code>
+            {t.pilotLogin.securedBy}
           </div>
         </div>
       </div>
@@ -1526,4 +1528,3 @@ export default function NexoraApp() {
     </div>
   )
 }
-

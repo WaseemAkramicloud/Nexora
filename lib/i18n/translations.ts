@@ -69,12 +69,10 @@ export const translations = {
       auditLog: "Security Audit Logs"
     },
     pilotLogin: {
-      title: "LAM Maftah Pilot Authentication",
+      title: "Sign in with LAM Maftah",
       subtitle: "Access your assigned NEXORA workspace using your centralized LAM Maftah identity.",
-      badge: "Controlled Pilot Access (Stage 6C.1)",
       continueBtn: "Continue with LAM Maftah",
-      returnStandard: "Return to standard login",
-      infoNote: "Authentication will be securely verified via LAM Maftah OAuth 2.0 PKCE."
+      securedBy: "Secured by LAM Maftah"
     },
     auth: {
       loginWithLam: "Log In via LAM ID SSO",
@@ -151,12 +149,10 @@ export const translations = {
       auditLog: "Journaux d'Audit de Sécurité"
     },
     pilotLogin: {
-      title: "Connexion Pilote LAM Maftah",
+      title: "Connexion avec LAM Maftah",
       subtitle: "Accédez à votre espace de travail NEXORA avec votre identité centralisée LAM Maftah.",
-      badge: "Accès Pilote Contrôlé (Étape 6C.1)",
       continueBtn: "Continuer avec LAM Maftah",
-      returnStandard: "Retour à la connexion standard",
-      infoNote: "L'authentification sera vérifiée en toute sécurité via OAuth 2.0 PKCE de LAM Maftah."
+      securedBy: "Sécurisé par LAM Maftah"
     },
     auth: {
       loginWithLam: "Se connecter via LAM ID SSO",
@@ -233,12 +229,10 @@ export const translations = {
       auditLog: "سجلات التدقيق الأمني"
     },
     pilotLogin: {
-      title: "تسجيل الدخول التجريبي — LAM Maftah",
+      title: "تسجيل الدخول باستخدام LAM Maftah",
       subtitle: "الوصول إلى مساحة عمل نيكسورا NEXORA المخصصة لك باستخدام هوية مفتاح LAM Maftah المركزية.",
-      badge: "وصول تجريبي منضبط (المرحلة 6C.1)",
       continueBtn: "المتابعة باستخدام LAM Maftah",
-      returnStandard: "العودة لتسجيل الدخول القياسي",
-      infoNote: "يتم التحقق من الهوية والأذونات بأمان عبر تفويض OAuth 2.0 PKCE المركزي."
+      securedBy: "محمي بواسطة LAM Maftah"
     },
     auth: {
       loginWithLam: "تسجيل الدخول عبر LAM ID SSO",

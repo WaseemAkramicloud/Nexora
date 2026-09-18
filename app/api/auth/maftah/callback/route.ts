@@ -167,16 +167,6 @@ export async function GET(req: NextRequest) {
   }
 
   if (!resolveResult.success || !resolveResult.data) {
-    console.log(
-      '[NEXORA_MAFTAH_DIAG callback_branch resolve_call_failed]',
-      JSON.stringify({
-        failureKind: resolveResult.failureKind || 'HTTP_NON_200',
-        httpStatus: resolveResult.httpStatus ?? resolveResult.status ?? null,
-        bodyStatus: resolveResult.safeUpstreamStatus ?? null,
-        bodyError: resolveResult.safeUpstreamError ?? null
-      })
-    )
-
     // Stage 8: Resolver failure branch entered
     await logAuthOperationalEvent({
       eventType: "maftah_resolver_failure_branch",
@@ -201,8 +191,6 @@ export async function GET(req: NextRequest) {
 
   // Case A: Multi-Organization Selection Required
   if (resolveData.status === "organization_selection_required") {
-    console.log('[NEXORA_MAFTAH_DIAG callback_branch organization_selection_required]')
-
     // Stage 8: Selection required branch entered
     await logAuthOperationalEvent({
       eventType: "maftah_selection_required_branch_entered",
@@ -261,8 +249,6 @@ export async function GET(req: NextRequest) {
 
   // Case B: Single Authorized Organization Entry
   if (resolveData.status === "authorized" && resolveData.organization) {
-    console.log('[NEXORA_MAFTAH_DIAG callback_branch authorized]')
-
     // Stage 8: Authorized branch entered
     await logAuthOperationalEvent({
       eventType: "maftah_authorized_branch_entered",
@@ -432,15 +418,6 @@ export async function GET(req: NextRequest) {
   }
 
   // Denied / fail-closed default
-  console.log(
-    '[NEXORA_MAFTAH_DIAG callback_branch unexpected_resolver_status]',
-    JSON.stringify({
-      httpStatus: resolveResult.httpStatus ?? resolveResult.status ?? null,
-      bodyStatus: resolveResult.safeUpstreamStatus ?? null,
-      eligibleOrganizationCount: resolveResult.eligibleOrganizationCount ?? null
-    })
-  )
-
   // Stage 8: Unexpected status branch entered
   await logAuthOperationalEvent({
     eventType: "maftah_unexpected_status_branch",

@@ -6,13 +6,15 @@ NEXORA is an enterprise SaaS application designed under the central **LAM Archit
 
 ## 1. Authentication & Identity Architecture
 
-NEXORA relies strictly on the central identity authority **LAM ID** (`https://id.lubbalmandumah.com`) for user authentication, product entitlement verification, and multi-tenant access control.
+NEXORA uses **LAM Maftah** as its normal user-facing identity and federation authority. Maftah resolves authorized organizations; NEXORA independently maps them to existing local tenants, memberships, and product roles.
 
 * **Protocol**: OAuth 2.0 / OpenID Connect (OIDC) Authorization Code Flow with PKCE (`S256`).
-* **Token Verification**: RS256 JWT signature verification using public keys dynamically retrieved from LAM ID's JWKS endpoint (`https://id.lubbalmandumah.com/.well-known/jwks.json`).
-* **Product Entitlement**: Strict claim validation ensuring `products` includes `'nexora'`.
-* **Tenant Isolation**: Automated mapping from LAM company context to NEXORA local tenant workspaces and database memberships.
-* **Credentials & Passwords**: NEXORA creates **no local user passwords**. Identity management is delegated entirely to LAM ID.
+* **Token Verification**: Maftah OAuth access tokens and NEXORA-specific ID tokens are verified independently against their intended contracts.
+* **Tenant Isolation**: Authorized Maftah organizations map only to explicitly provisioned NEXORA tenants and memberships.
+* **Product Authorization**: NEXORA local roles remain authoritative inside each selected workspace.
+* **Credentials & Passwords**: NEXORA creates **no local user passwords**. Federation credentials are encrypted server-side and scoped to the local product session.
+
+The legacy LAM ID authentication implementation remains temporarily in source as an unlinked post-cutover rollback fallback. It is not part of the normal user-facing Maftah login flow.
 
 > [!NOTE]
 > **OBSOLETE REQUIREMENT**: Local development no longer requires running LAM ID locally on port `3000`. All environments connect to the live identity authority at `https://id.lubbalmandumah.com`.
@@ -119,13 +121,16 @@ ALLOW_PRODUCTION_E2E=true E2E_SIMULATE_FAILURE_STEP=7 node scripts/live-e2e-suit
 
 ---
 
-## 8. Stage 6C.1 — Controlled Maftah Login Exposure & Operational Observability
+## 8. Stage 6C.1 — Complete
 
-NEXORA implements a three-state server-side exposure model for Maftah login rollout:
+NEXORA retains a three-state server-side exposure model for controlled Maftah availability:
 - **Environment Variable**: `NEXORA_MAFTAH_LOGIN_EXPOSURE` (`hidden` | `pilot` | `public`)
 - **Default (Fail-Closed)**: Any missing, empty, or invalid value strictly resolves to `hidden`.
 - **Active Production Target**: `pilot` (`NEXORA_MAFTAH_LOGIN_EXPOSURE=pilot`).
-- **Normal Login Entrypoint (`/`)**: Remains 100% legacy SSO default without Maftah buttons.
-- **Pilot Entrypoint**: `/login/maftah` provides dedicated, localized (EN/FR/AR RTL) pilot login for controlled validation.
+- **Normal Login Entrypoint (`/`)**: Presents Maftah only and links to `/login/maftah`.
+- **Maftah Entrypoint**: `/login/maftah` provides the localized EN/FR/AR login without a visible legacy fallback.
 - **Operational Observability**: Telemetry events logged via private table `nexora_internal.auth_operational_events` and SECURITY DEFINER RPC `public.service_log_auth_operational_event` with strict metadata allowlists and zero credential logging.
+- **Production Proof**: Multi-organization selection, two mapped NEXORA workspaces, distinct local roles, session creation, and NEXORA-local sign-out were human-verified in production on 17 September 2026.
+- **Migration Record**: The repaired `20260903040000_nexora_federation_adapter.sql` was manually applied; `20260917000000_reconcile_nexora_refresh_and_revalidation_engine.sql` restored the later engine state. Hosted schema is verified; migration-ledger reconciliation remains pending as separate maintenance.
+- **Status**: Stage 6C.1 is complete. Stage 6C.2 has not started.
 - **Architecture Specification**: [`docs/architecture/stage-6c1-controlled-maftah-login-exposure.md`](docs/architecture/stage-6c1-controlled-maftah-login-exposure.md)

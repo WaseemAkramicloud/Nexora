@@ -776,7 +776,6 @@ export async function callMaftahResolveEntry(
   requestedOrgId?: string
 ): Promise<CallMaftahResolveEntryResult> {
   let httpStatus: number | null = null
-  let responseOk: boolean | null = null
   let jsonParsed = false
   let bodyStatus: string | null = null
   let bodyError: string | null = null
@@ -804,21 +803,8 @@ export async function callMaftahResolveEntry(
         cache: 'no-store'
       })
       httpStatus = res.status
-      responseOk = res.ok
     } catch {
       failureKind = 'NETWORK_ERROR'
-      console.log(
-        '[NEXORA_MAFTAH_DIAG resolver_result]',
-        JSON.stringify({
-          httpStatus: null,
-          responseOk: null,
-          jsonParsed: false,
-          bodyStatus: null,
-          bodyError: null,
-          eligibleOrganizationCount: null,
-          failureKind: 'NETWORK_ERROR'
-        })
-      )
       return {
         success: false,
         httpStatus: null,
@@ -840,18 +826,6 @@ export async function callMaftahResolveEntry(
     } catch {
       jsonParsed = false
       failureKind = 'JSON_PARSE_ERROR'
-      console.log(
-        '[NEXORA_MAFTAH_DIAG resolver_result]',
-        JSON.stringify({
-          httpStatus,
-          responseOk,
-          jsonParsed: false,
-          bodyStatus: null,
-          bodyError: null,
-          eligibleOrganizationCount: null,
-          failureKind: 'JSON_PARSE_ERROR'
-        })
-      )
       return {
         success: false,
         httpStatus,
@@ -893,19 +867,6 @@ export async function callMaftahResolveEntry(
       failureKind = 'HTTP_NON_200'
     }
 
-    console.log(
-      '[NEXORA_MAFTAH_DIAG resolver_result]',
-      JSON.stringify({
-        httpStatus,
-        responseOk,
-        jsonParsed,
-        bodyStatus,
-        bodyError,
-        eligibleOrganizationCount,
-        failureKind
-      })
-    )
-
     if (failureKind === 'SUCCESS') {
       return {
         success: true,
@@ -939,18 +900,6 @@ export async function callMaftahResolveEntry(
     }
   } catch {
     failureKind = 'NETWORK_ERROR'
-    console.log(
-      '[NEXORA_MAFTAH_DIAG resolver_result]',
-      JSON.stringify({
-        httpStatus,
-        responseOk,
-        jsonParsed,
-        bodyStatus,
-        bodyError,
-        eligibleOrganizationCount,
-        failureKind: 'NETWORK_ERROR'
-      })
-    )
     return {
       success: false,
       httpStatus,

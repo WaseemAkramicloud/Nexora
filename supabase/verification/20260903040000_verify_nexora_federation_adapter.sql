@@ -1,60 +1,82 @@
 -- ==============================================================================
--- Verification: 20260903040000_verify_nexora_federation_adapter.sql
--- Description: Structural & Permission Verification for NEXORA Federation Adapter
+-- Verification: Current NEXORA Federation Adapter Base Schema
 -- Target: NEXORA PostgreSQL (zfancncassjmghxzogbm)
+-- Read-only assertions only. This file does not create or mutate data.
 -- ==============================================================================
 
 DO $verify$
 DECLARE
-    v_schema_exists BOOLEAN;
-    v_eil_exists BOOLEAN;
-    v_fwl_exists BOOLEAN;
-    v_fs_exists BOOLEAN;
-    v_fsc_exists BOOLEAN;
-    v_flt_exists BOOLEAN;
-    v_has_anon_priv BOOLEAN;
-    v_has_auth_priv BOOLEAN;
-    v_has_service_priv BOOLEAN;
+    v_table_name TEXT;
+    v_signature TEXT;
+    v_function_oid OID;
+    v_is_security_definer BOOLEAN;
+    v_tables CONSTANT TEXT[] := ARRAY[
+        'external_identities',
+        'external_identity_memberships',
+        'federation_workspace_links',
+        'federation_sessions',
+        'federation_session_credentials',
+        'federation_login_transactions'
+    ];
+    v_base_rpc_signatures CONSTANT TEXT[] := ARRAY[
+        'public.service_get_federation_identity_link(text,text,uuid)',
+        'public.service_resolve_federation_workspace(text,uuid)',
+        'public.service_create_federation_session(uuid,uuid,text,text,uuid,timestamp with time zone)',
+        'public.service_get_federation_session(uuid)',
+        'public.service_revoke_federation_session(uuid)',
+        'public.service_store_federation_credentials(uuid,text,text,text)',
+        'public.service_get_federation_credentials(uuid)',
+        'public.service_create_login_transaction(text,text,text,text,text)',
+        'public.service_get_login_transaction(uuid)',
+        'public.service_consume_login_transaction(uuid)',
+        'public.service_provision_federation_link(uuid,uuid,text,uuid,text)'
+    ];
 BEGIN
-    -- 1. Verify schema exists
-    SELECT EXISTS (
-        SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nexora_internal'
-    ) INTO v_schema_exists;
-    ASSERT v_schema_exists, 'Schema nexora_internal must exist';
+    ASSERT EXISTS (
+        SELECT 1
+        FROM information_schema.schemata
+        WHERE schema_name = 'nexora_internal'
+    ), 'Schema nexora_internal must exist';
 
-    -- 2. Verify all tables exist
-    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'nexora_internal' AND table_name = 'external_identity_links') INTO v_eil_exists;
-    ASSERT v_eil_exists, 'Table nexora_internal.external_identity_links must exist';
+    FOREACH v_table_name IN ARRAY v_tables LOOP
+        ASSERT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'nexora_internal'
+              AND table_name = v_table_name
+        ), format('Missing table nexora_internal.%s', v_table_name);
 
-    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'nexora_internal' AND table_name = 'federation_workspace_links') INTO v_fwl_exists;
-    ASSERT v_fwl_exists, 'Table nexora_internal.federation_workspace_links must exist';
+        ASSERT NOT has_table_privilege('anon', format('nexora_internal.%I', v_table_name), 'SELECT'),
+            format('anon must not read nexora_internal.%s', v_table_name);
+        ASSERT NOT has_table_privilege('authenticated', format('nexora_internal.%I', v_table_name), 'SELECT'),
+            format('authenticated must not read nexora_internal.%s', v_table_name);
+    END LOOP;
 
-    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'nexora_internal' AND table_name = 'federation_sessions') INTO v_fs_exists;
-    ASSERT v_fs_exists, 'Table nexora_internal.federation_sessions must exist';
+    ASSERT NOT has_schema_privilege('anon', 'nexora_internal', 'USAGE'),
+        'anon must not have USAGE on nexora_internal';
+    ASSERT NOT has_schema_privilege('authenticated', 'nexora_internal', 'USAGE'),
+        'authenticated must not have USAGE on nexora_internal';
+    ASSERT has_schema_privilege('service_role', 'nexora_internal', 'USAGE'),
+        'service_role must have USAGE on nexora_internal';
 
-    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'nexora_internal' AND table_name = 'federation_session_credentials') INTO v_fsc_exists;
-    ASSERT v_fsc_exists, 'Table nexora_internal.federation_session_credentials must exist';
+    FOREACH v_signature IN ARRAY v_base_rpc_signatures LOOP
+        v_function_oid := to_regprocedure(v_signature)::OID;
+        ASSERT v_function_oid IS NOT NULL, format('Missing base federation RPC %s', v_signature);
 
-    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'nexora_internal' AND table_name = 'federation_login_transactions') INTO v_flt_exists;
-    ASSERT v_flt_exists, 'Table nexora_internal.federation_login_transactions must exist';
+        SELECT prosecdef
+        INTO v_is_security_definer
+        FROM pg_proc
+        WHERE oid = v_function_oid;
 
-    -- 3. Verify public RPCs exist with SECURITY DEFINER
-    ASSERT (SELECT prosecdef FROM pg_proc WHERE proname = 'service_get_federation_identity_link'), 'service_get_federation_identity_link must be SECURITY DEFINER';
-    ASSERT (SELECT prosecdef FROM pg_proc WHERE proname = 'service_resolve_federation_workspace'), 'service_resolve_federation_workspace must be SECURITY DEFINER';
-    ASSERT (SELECT prosecdef FROM pg_proc WHERE proname = 'service_create_federation_session'), 'service_create_federation_session must be SECURITY DEFINER';
-    ASSERT (SELECT prosecdef FROM pg_proc WHERE proname = 'service_get_federation_session'), 'service_get_federation_session must be SECURITY DEFINER';
-    ASSERT (SELECT prosecdef FROM pg_proc WHERE proname = 'service_revoke_federation_session'), 'service_revoke_federation_session must be SECURITY DEFINER';
+        ASSERT v_is_security_definer, format('%s must be SECURITY DEFINER', v_signature);
+        ASSERT has_function_privilege('service_role', v_function_oid, 'EXECUTE'),
+            format('service_role must have EXECUTE on %s', v_signature);
+        ASSERT NOT has_function_privilege('anon', v_function_oid, 'EXECUTE'),
+            format('anon must not have EXECUTE on %s', v_signature);
+        ASSERT NOT has_function_privilege('authenticated', v_function_oid, 'EXECUTE'),
+            format('authenticated must not have EXECUTE on %s', v_signature);
+    END LOOP;
 
-    -- 4. Verify privilege isolation on internal schema
-    SELECT has_schema_privilege('anon', 'nexora_internal', 'USAGE') INTO v_has_anon_priv;
-    ASSERT NOT v_has_anon_priv, 'anon role MUST NOT have USAGE on nexora_internal';
-
-    SELECT has_schema_privilege('authenticated', 'nexora_internal', 'USAGE') INTO v_has_auth_priv;
-    ASSERT NOT v_has_auth_priv, 'authenticated role MUST NOT have USAGE on nexora_internal';
-
-    SELECT has_schema_privilege('service_role', 'nexora_internal', 'USAGE') INTO v_has_service_priv;
-    ASSERT v_has_service_priv, 'service_role MUST have USAGE on nexora_internal';
-
-    RAISE NOTICE 'NEXORA Federation Adapter Schema & Permissions Verification: SUCCESS';
+    RAISE NOTICE 'Current NEXORA federation adapter base schema and permissions: VERIFIED';
 END;
 $verify$;

@@ -6,11 +6,6 @@ import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
 export const dynamic = 'force-dynamic'
 
-function redact(val: string): string {
-  if (!val || val.length < 8) return '***'
-  return `${val.slice(0, 4)}...${val.slice(-4)}`
-}
-
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const returnUrl = searchParams.get('returnUrl') || '/'
@@ -30,15 +25,6 @@ export async function GET(request: NextRequest) {
     eventType: 'legacy_login_started',
     provider: 'legacy_sso',
     outcome: 'pending'
-  })
-
-  // Diagnostic trace (Redacted)
-  console.log('[OIDC SSO INIT TRACE]', {
-    generatedNonceRedacted: redact(nonce),
-    stateIdentifierRedacted: redact(stateRaw),
-    pkceVerifierRedacted: redact(verifier),
-    cookieName: 'nexora_nonce',
-    targetAuthorizeUrl: authorizeEndpoint
   })
 
   // Embed returnUrl securely into state payload
