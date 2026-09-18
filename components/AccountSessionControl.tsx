@@ -7,6 +7,7 @@ interface AccountSessionControlProps {
   roleLabel: string
   signOutLabel: string
   switchWorkspaceLabel?: string
+  workspaceName?: string | null
 }
 
 export function AccountSessionControl({
@@ -15,15 +16,26 @@ export function AccountSessionControl({
   role,
   roleLabel,
   signOutLabel,
-  switchWorkspaceLabel = 'Switch workspace'
+  switchWorkspaceLabel = 'Switch workspace',
+  workspaceName
 }: AccountSessionControlProps) {
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || 'NEXORA user'
 
   return (
     <div className="flex items-center gap-3 pl-3 border-l border-white/10" aria-label="Account and session">
       <div className="text-right hidden sm:block">
-        <div className="text-xs font-semibold text-white">{displayName}</div>
-        <div className="text-[10px] text-indigo-400 flex items-center justify-end gap-1">
+        <div className="text-xs font-semibold text-white flex items-center justify-end gap-1.5">
+          <span>{displayName}</span>
+          {workspaceName && (
+            <span
+              className="text-[10px] font-medium text-slate-300 bg-white/10 px-1.5 py-0.5 rounded border border-white/10 max-w-[130px] truncate"
+              title={workspaceName}
+            >
+              {workspaceName}
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-indigo-400 flex items-center justify-end gap-1 mt-0.5">
           <ShieldCheck className="w-3 h-3" />
           <span data-role={role}>{roleLabel}</span>
         </div>

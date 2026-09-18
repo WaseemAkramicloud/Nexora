@@ -130,14 +130,25 @@ Stage 6C.1 has been completed and human-verified in production.
 
 ---
 
-## 9. Stage 6C.2 — Public Maftah Rollout & Workspace Switching
+## 9. Stage 6C.2 — Complete
 
-Stage 6C.2 moves NEXORA into the normal public Maftah authentication experience:
-- **Normal Login Entrypoint**: Maftah is the primary visible authentication path (`/` and `/login/maftah`).
-- **Exposure Mode**: `NEXORA_MAFTAH_LOGIN_EXPOSURE=public`. Gating infrastructure retained for emergency rollback.
-- **Safe Workspace Switching**: Authenticated multi-org users switch workspaces through a fresh Maftah OAuth/resolver authorization round-trip (`/api/auth/maftah/switch` -> `/select-workspace`). Zero trust for client-supplied tenant IDs; old session is safely revoked before switching.
-- **Customer-Facing Error UX**: Internal error codes are masked and mapped to localized user-friendly messages in English, French, and Arabic with proper RTL support.
-- **Legacy LAM ID Rollback**: Legacy LAM ID endpoints are retained strictly for emergency rollback; no normal customer flow or link references `id.lubbalmandumah.com`. Old LAM ID is not retired yet.
-- **Status**: Stage 6C.2 is IMPLEMENTED. Stage 6C.3 has not started.
+Stage 6C.2 has been completed:
+- **Public Rollout**: Maftah is the visible normal authentication path.
+- **Safe Workspace Switching**: Authenticated multi-org users switch workspaces through fresh Maftah OAuth/resolver authorization (`/api/auth/maftah/switch` -> `/select-workspace`). Old session safely revoked before switching.
+- **Customer Error UX**: Raw machine codes masked; friendly localized error messages in EN, FR, AR with RTL support.
+- **Status**: COMPLETE.
 - **Architecture Specification**: [`docs/architecture/stage-6c2-public-maftah-rollout.md`](docs/architecture/stage-6c2-public-maftah-rollout.md)
+
+---
+
+## 10. Stage 6C.3 — Maftah Default & Legacy Fallback Hardening
+
+Stage 6C.3 establishes Maftah as NEXORA's definitive default authentication path and isolates legacy LAM ID:
+- **Maftah Default**: All normal authentication entrypoints (`/`, `/login/maftah`, `/auth/unauthorized`, session recovery, logout) use Maftah by default.
+- **Legacy Fallback Isolation**: Legacy LAM ID endpoints (`/api/auth/sso`, `/api/auth/callback`, legacy logout branches) are isolated and marked strictly as rollback-only infrastructure. Old LAM ID is not retired yet.
+- **Account Menu Polish**: Authenticated header displays user display name, local product role, current workspace badge, Switch workspace action, and Sign out.
+- **Fail-Closed Session Recovery**: Expired sessions, revoked memberships, and failed revalidations fail closed cleanly to `/login/maftah` with localized user guidance.
+- **Status**: Stage 6C.3 is IMPLEMENTED. Stage 6C.4 has not started.
+- **Architecture Specification**: [`docs/architecture/stage-6c3-maftah-default-and-legacy-hardening.md`](docs/architecture/stage-6c3-maftah-default-and-legacy-hardening.md)
+
 

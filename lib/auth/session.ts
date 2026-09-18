@@ -14,6 +14,8 @@ export interface NexoraUserSession {
   lamCustomerId: string
   lamCompanyId: string
   tenantId: string
+  tenantName?: string | null
+  tenantSlug?: string | null
   membershipId: string
   email: string
   firstName: string
@@ -128,6 +130,8 @@ export async function getCurrentSession(options?: {
         lamCustomerId: fedSession.subject,
         lamCompanyId: fedSession.external_organization_id,
         tenantId: fedSession.tenant_id,
+        tenantName: fedSession.tenant_name || null,
+        tenantSlug: fedSession.tenant_slug || null,
         membershipId: fedSession.membership_id,
         email: fedSession.email,
         firstName: fedSession.first_name,

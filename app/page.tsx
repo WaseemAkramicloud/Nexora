@@ -440,6 +440,7 @@ export default function NexoraApp() {
               roleLabel={t.userRole[session.role as keyof typeof t.userRole] || session.role}
               signOutLabel={t.auth.logout}
               switchWorkspaceLabel={t.pilotLogin.switchWorkspace || 'Switch workspace'}
+              workspaceName={session.tenantName || session.tenantSlug || null}
             />
           )}
         </div>
