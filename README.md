@@ -123,14 +123,21 @@ ALLOW_PRODUCTION_E2E=true E2E_SIMULATE_FAILURE_STEP=7 node scripts/live-e2e-suit
 
 ## 8. Stage 6C.1 — Complete
 
-NEXORA retains a three-state server-side exposure model for controlled Maftah availability:
-- **Environment Variable**: `NEXORA_MAFTAH_LOGIN_EXPOSURE` (`hidden` | `pilot` | `public`)
-- **Default (Fail-Closed)**: Any missing, empty, or invalid value strictly resolves to `hidden`.
-- **Active Production Target**: `pilot` (`NEXORA_MAFTAH_LOGIN_EXPOSURE=pilot`).
-- **Normal Login Entrypoint (`/`)**: Presents Maftah only and links to `/login/maftah`.
-- **Maftah Entrypoint**: `/login/maftah` provides the localized EN/FR/AR login without a visible legacy fallback.
-- **Operational Observability**: Telemetry events logged via private table `nexora_internal.auth_operational_events` and SECURITY DEFINER RPC `public.service_log_auth_operational_event` with strict metadata allowlists and zero credential logging.
-- **Production Proof**: Multi-organization selection, two mapped NEXORA workspaces, distinct local roles, session creation, and NEXORA-local sign-out were human-verified in production on 17 September 2026.
-- **Migration Record**: The repaired `20260903040000_nexora_federation_adapter.sql` was manually applied; `20260917000000_reconcile_nexora_refresh_and_revalidation_engine.sql` restored the later engine state. Hosted schema is verified; migration-ledger reconciliation remains pending as separate maintenance.
-- **Status**: Stage 6C.1 is complete. Stage 6C.2 has not started.
+Stage 6C.1 has been completed and human-verified in production.
+- **Production Proof**: Multi-organization selection, two mapped NEXORA workspaces, distinct local roles, session creation, refresh engine, and NEXORA-local sign-out verified in production on 17 September 2026.
+- **Status**: COMPLETE.
 - **Architecture Specification**: [`docs/architecture/stage-6c1-controlled-maftah-login-exposure.md`](docs/architecture/stage-6c1-controlled-maftah-login-exposure.md)
+
+---
+
+## 9. Stage 6C.2 — Public Maftah Rollout & Workspace Switching
+
+Stage 6C.2 moves NEXORA into the normal public Maftah authentication experience:
+- **Normal Login Entrypoint**: Maftah is the primary visible authentication path (`/` and `/login/maftah`).
+- **Exposure Mode**: `NEXORA_MAFTAH_LOGIN_EXPOSURE=public`. Gating infrastructure retained for emergency rollback.
+- **Safe Workspace Switching**: Authenticated multi-org users switch workspaces through a fresh Maftah OAuth/resolver authorization round-trip (`/api/auth/maftah/switch` -> `/select-workspace`). Zero trust for client-supplied tenant IDs; old session is safely revoked before switching.
+- **Customer-Facing Error UX**: Internal error codes are masked and mapped to localized user-friendly messages in English, French, and Arabic with proper RTL support.
+- **Legacy LAM ID Rollback**: Legacy LAM ID endpoints are retained strictly for emergency rollback; no normal customer flow or link references `id.lubbalmandumah.com`. Old LAM ID is not retired yet.
+- **Status**: Stage 6C.2 is IMPLEMENTED. Stage 6C.3 has not started.
+- **Architecture Specification**: [`docs/architecture/stage-6c2-public-maftah-rollout.md`](docs/architecture/stage-6c2-public-maftah-rollout.md)
+

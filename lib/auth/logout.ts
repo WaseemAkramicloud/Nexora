@@ -18,6 +18,7 @@ export function getLogoutDestination(input: {
       : '/login/maftah?error=session_revocation_failed'
   }
 
+  // Legacy rollback-only path
   if (logoutState.authenticationMode === 'legacy') {
     return input.legacyGlobalLogoutRequested ? input.legacyGlobalLogoutUrl : '/'
   }

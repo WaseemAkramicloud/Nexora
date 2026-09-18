@@ -310,18 +310,42 @@ export default function NexoraApp() {
   ]
 
   if (!session) {
-
     return (
-      <div className="min-h-screen bg-[#0A0D14] text-slate-100 flex items-center justify-center p-6" dir={dir}>
-        <div className="max-w-md w-full nexora-glass rounded-3xl p-8 border border-white/10 text-center space-y-6 shadow-2xl">
+      <div className="min-h-screen bg-[#0A0D14] text-slate-100 flex flex-col items-center justify-center p-6 relative overflow-hidden" dir={dir}>
+        {/* Language Selector Header */}
+        <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-[#121824] border border-white/10 rounded-full p-1 text-xs shadow-sm z-20">
+          <button
+            onClick={() => setLocale("en")}
+            className={`px-2.5 py-1 rounded-full font-medium transition-all ${locale === "en" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
+          >
+            EN
+          </button>
+          <button
+            onClick={() => setLocale("fr")}
+            className={`px-2.5 py-1 rounded-full font-medium transition-all ${locale === "fr" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
+          >
+            FR
+          </button>
+          <button
+            onClick={() => setLocale("ar")}
+            className={`px-2.5 py-1 rounded-full font-medium transition-all ${locale === "ar" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
+          >
+            AR (عربي)
+          </button>
+        </div>
+
+        {/* Dynamic Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="max-w-md w-full nexora-glass rounded-3xl p-8 border border-white/10 text-center space-y-6 shadow-2xl relative z-10">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-2xl mx-auto shadow-xl shadow-indigo-600/30">
             N
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white">LAM Maftah Authentication Required</h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Sign in with your LAM Maftah identity to access your assigned NEXORA workspace.
+            <h2 className="text-xl font-bold text-white tracking-tight">{t.pilotLogin.title}</h2>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+              {t.pilotLogin.subtitle}
             </p>
           </div>
 
@@ -348,7 +372,7 @@ export default function NexoraApp() {
                     alert(e.message || 'Dev login failed')
                   }
                 }}
-                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium rounded-xl border border-white/10 transition-all block"
+                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-400 text-xs font-medium rounded-xl border border-white/5 transition-all block"
               >
                 Development session
               </button>
@@ -415,6 +439,7 @@ export default function NexoraApp() {
               role={session.role}
               roleLabel={t.userRole[session.role as keyof typeof t.userRole] || session.role}
               signOutLabel={t.auth.logout}
+              switchWorkspaceLabel={t.pilotLogin.switchWorkspace || 'Switch workspace'}
             />
           )}
         </div>

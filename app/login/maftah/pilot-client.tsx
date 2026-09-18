@@ -1,10 +1,10 @@
 "use client"
 
 import React from "react"
-import { Shield, KeyRound, ArrowRight } from "lucide-react"
+import { Shield, KeyRound, ArrowRight, AlertCircle } from "lucide-react"
 import { useTranslation } from "@/lib/i18n/context"
+import { getLocalizedAuthError } from "@/lib/i18n/translations"
 import { useSearchParams } from "next/navigation"
-import { AlertCircle } from "lucide-react"
 
 export function PilotLoginClient() {
   const { t, locale, setLocale, dir } = useTranslation()
@@ -16,6 +16,8 @@ export function PilotLoginClient() {
     continueBtn: "Continue with LAM Maftah",
     securedBy: "Secured by LAM Maftah"
   }
+
+  const errorMessage = errorParam ? getLocalizedAuthError(errorParam, locale) : null
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-6 relative" dir={dir}>
@@ -48,10 +50,10 @@ export function PilotLoginClient() {
           <Shield className="w-7 h-7 text-indigo-600" />
         </div>
 
-        {errorParam && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-600 text-xs flex items-center gap-2 text-left">
+        {errorMessage && (
+          <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-600 text-xs flex items-center gap-2.5 text-left" dir={dir}>
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>Authentication error: <code className="font-mono text-[11px]">{errorParam}</code></span>
+            <span className="leading-relaxed font-medium">{errorMessage}</span>
           </div>
         )}
 
@@ -85,3 +87,4 @@ export function PilotLoginClient() {
     </div>
   )
 }
+

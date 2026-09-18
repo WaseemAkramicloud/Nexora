@@ -6,9 +6,14 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getLamTokenEndpoint, getLamClientId, getLamClientSecret, getNexoraCallbackUrl } from '@/lib/auth/config'
 import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
+/**
+ * Legacy LAM ID OIDC callback (legacy rollback-only path)
+ * Kept for emergency rollback only; no normal customer flow links here.
+ */
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+
   try {
     const searchParams = request.nextUrl.searchParams
     const code = searchParams.get('code')

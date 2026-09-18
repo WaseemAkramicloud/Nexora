@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin"
 
 export type AuthEventType =
   | "maftah_login_started"
+  | "maftah_switch_workspace_started"
   | "maftah_callback_received"
   | "maftah_token_exchange_success"
   | "maftah_id_token_verified"
@@ -44,7 +45,7 @@ export interface SafeAuthMetadata {
   latency_ms?: number
   credential_version?: number
   revalidation_type?: "periodic" | "forced"
-  flow?: "pilot" | "direct"
+  flow?: "pilot" | "direct" | "switch_workspace"
 }
 
 export interface AuthOperationalEventInput {
@@ -92,7 +93,7 @@ function filterSafeMetadata(meta?: SafeAuthMetadata): Record<string, unknown> {
     safe.revalidation_type = meta.revalidation_type
   }
 
-  if (meta.flow === "pilot" || meta.flow === "direct") {
+  if (meta.flow === "pilot" || meta.flow === "direct" || meta.flow === "switch_workspace") {
     safe.flow = meta.flow
   }
 

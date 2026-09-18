@@ -111,12 +111,12 @@ export function getLamJwksEndpoint(): string {
 export type MaftahExposureMode = "hidden" | "pilot" | "public"
 
 /**
- * Authoritative Server-Side Maftah Login Exposure Mode Helper (Stage 6C.1)
+ * Authoritative Server-Side Maftah Login Exposure Mode Helper (Stage 6C.2)
  *
  * Allowed values:
- * - "hidden": No Maftah login entry point exposed. Initiation routes (/login/maftah, /api/auth/maftah) return 404.
- * - "pilot": Dedicated /login/maftah route is available by direct URL. Normal login remains legacy SSO default.
- * - "public": (Stage 6C.2 preparation) Recognized by config helper.
+ * - "hidden": No Maftah login entry point exposed. Initiation routes (/login/maftah, /api/auth/maftah, /api/auth/maftah/switch) return 404.
+ * - "pilot": Dedicated /login/maftah route is available by direct URL.
+ * - "public": Normal public login experience uses Maftah authentication as primary visible entrypoint.
  *
  * Fail-closed behavior: Any missing, empty, or invalid value strictly defaults to "hidden".
  */

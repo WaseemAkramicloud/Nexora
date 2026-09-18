@@ -1,4 +1,4 @@
-import { LogOut, ShieldCheck } from 'lucide-react'
+import { LogOut, ShieldCheck, ArrowLeftRight } from 'lucide-react'
 
 interface AccountSessionControlProps {
   firstName?: string | null
@@ -6,6 +6,7 @@ interface AccountSessionControlProps {
   role: string
   roleLabel: string
   signOutLabel: string
+  switchWorkspaceLabel?: string
 }
 
 export function AccountSessionControl({
@@ -13,7 +14,8 @@ export function AccountSessionControl({
   lastName,
   role,
   roleLabel,
-  signOutLabel
+  signOutLabel,
+  switchWorkspaceLabel = 'Switch workspace'
 }: AccountSessionControlProps) {
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || 'NEXORA user'
 
@@ -31,6 +33,17 @@ export function AccountSessionControl({
         {firstName?.[0] || 'U'}
       </div>
 
+      <form action="/api/auth/maftah/switch" method="post">
+        <button
+          type="submit"
+          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5"
+          title={switchWorkspaceLabel}
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5" />
+          <span className="hidden lg:inline">{switchWorkspaceLabel}</span>
+        </button>
+      </form>
+
       <form action="/api/auth/logout" method="post">
         <button
           type="submit"
@@ -44,3 +57,4 @@ export function AccountSessionControl({
     </div>
   )
 }
+

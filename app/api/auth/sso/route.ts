@@ -4,9 +4,14 @@ import { generateCodeVerifier, generateCodeChallenge, generateState, generateNon
 import { getLamAuthorizeEndpoint, getLamClientId, getNexoraCallbackUrl } from '@/lib/auth/config'
 import { logAuthOperationalEvent } from '@/lib/auth/observability'
 
+/**
+ * Legacy LAM ID SSO initiation (legacy rollback-only path)
+ * Kept for emergency rollback only; no normal customer flow links here.
+ */
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+
   const searchParams = request.nextUrl.searchParams
   const returnUrl = searchParams.get('returnUrl') || '/'
 

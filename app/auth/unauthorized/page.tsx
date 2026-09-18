@@ -3,6 +3,7 @@
 import React from 'react'
 import { ShieldAlert, KeyRound, ExternalLink, Lock } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n/context'
+import { getLocalizedAuthError } from '@/lib/i18n/translations'
 
 export default function UnauthorizedPage({
   searchParams
@@ -10,8 +11,10 @@ export default function UnauthorizedPage({
   searchParams?: { reason?: string; type?: string }
 }) {
   const { t, locale, setLocale, dir } = useTranslation()
-  const reason = searchParams?.reason || t.auth.unauthorizedDesc
+  const rawReason = searchParams?.reason
+  const reason = rawReason ? getLocalizedAuthError(rawReason, locale) : t.auth.unauthorizedDesc
   const errType = searchParams?.type || ''
+
 
   const isSecurityError = errType === 'security' || /nonce|state|pkce|token|signature|verifier|verification|expired/i.test(reason)
 
